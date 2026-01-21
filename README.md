@@ -36,7 +36,7 @@
 ### 🔐 Autentificare
 | Funcționalitate | Status | Descriere |
 |-----------------|--------|-----------|
-| Login cu Email/Parolă | ✅ Implementat | Autentificare securizată prin Supabase Auth |
+| Login cu Email/Parolă | ✅ Implementat | Autentificare securizată |
 | Înregistrare cont nou | ✅ Implementat | Creare cont cu nume, email și parolă |
 | Resetare parolă | ✅ Implementat | Trimitere email pentru resetare |
 | Logout | ✅ Implementat | Deconectare cu confirmare |
@@ -47,14 +47,14 @@
 |-----------------|--------|-----------|
 | Listă conversații | 🔄 În dezvoltare | Vizualizare conversații active |
 | Chat 1-la-1 | 🔄 În dezvoltare | Mesaje private între utilizatori |
-| Mesaje realtime | 📋 Planificat | Actualizare instantanee cu Supabase Realtime |
+| Mesaje realtime | 📋 Planificat | Actualizare instantanee |
 | Timestamp & Seen | 📋 Planificat | Ora trimiterii și status citire |
 
 ### 📚 Learn
 | Funcționalitate | Status | Descriere |
 |-----------------|--------|-----------|
 | Listă lecții | ✅ Implementat | Afișare lecții din baza de date |
-| Filtrare pe categorii | ✅ Implementat | Basics, Features, Shopping, Games |
+| Filtrare pe categorii | ✅ Implementat | Basics, Features, Shopping, Games (Doar pentru MVP. Categoriile vor fi introduse in functie de cursuri) |
 | Pagină detalii lecție | ✅ Implementat | Conținut complet și durată |
 | Pull-to-refresh | ✅ Implementat | Reîncărcare date |
 
@@ -71,7 +71,7 @@
 | Funcționalitate | Status | Descriere |
 |-----------------|--------|-----------|
 | Grid produse | ✅ Implementat | Afișare produse în format grid |
-| Filtrare pe categorii | ✅ Implementat | Îmbrăcăminte, Accesorii, Genți |
+| Filtrare pe categorii | ✅ Implementat | Îmbrăcăminte, Accesorii, Genți, etc |
 | Pagină detalii produs | ✅ Implementat | Descriere, preț, stoc |
 | Coș de cumpărături | ✅ Implementat | Adăugare/eliminare produse |
 | Modificare cantități | ✅ Implementat | +/- în coș |
