@@ -12,9 +12,6 @@
 **Versiune actuală: 1.0.0 (MVP)**
 
 [Funcționalități](#-funcționalități) •
-[Tehnologii](#-tehnologii-utilizate) •
-[Instalare](#-instalare) •
-[Structură](#-structura-proiectului) •
 [Roadmap](#-roadmap)
 
 </div>
@@ -120,28 +117,6 @@
 
 ---
 
-## 🛠 Tehnologii Utilizate
-
-### Frontend
-| Tehnologie | Versiune | Utilizare |
-|------------|----------|-----------|
-| **Flutter** | 3.38.7 | Framework UI cross-platform |
-| **Dart** | 3.10.7 | Limbaj de programare |
-| **Riverpod** | Latest | State management |
-| **Go Router** | Latest | Navigare |
-| **Video Player** | Latest | Redare video |
-| **Cached Network Image** | Latest | Cache imagini |
-
-### Backend
-| Tehnologie | Utilizare |
-|------------|-----------|
-| **Supabase** | Backend-as-a-Service |
-| **PostgreSQL** | Bază de date |
-| **Supabase Auth** | Autentificare |
-| **Supabase Storage** | Stocare fișiere |
-| **Supabase Realtime** | Actualizări live |
-
----
 
 ## 📱 Capturi de Ecran
 
