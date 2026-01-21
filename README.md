@@ -148,18 +148,16 @@
 ### Autentificare
 | Login | Register | Reset Password |
 |-------|----------|----------------|
-| ![Login](screenshots/login.png) | ![Register](screenshots/register.png) | ![Reset](screenshots/reset.png) |
+| ![Login](screenshots/login.jpeg) | ![Register](screenshots/register.jpeg) | ![Reset](screenshots/reset.jpeg) |
 
 ### Secțiuni principale
 | Learn | Videos | Shop |
 |-------|--------|------|
-| ![Learn](screenshots/learn.png) | ![Videos](screenshots/videos.png) | ![Shop](screenshots/shop.png) |
+| ![Learn](screenshots/learn.jpeg) | ![Videos](screenshots/videos.jpeg) | ![Shop](screenshots/shop.jpeg) |
 
 | Sports News | Sports Live | Games |
 |-------------|-------------|-------|
-| ![Sports News](screenshots/sports_news.png) | ![Sports Live](screenshots/sports_live.png) | ![Games](screenshots/games.png) |
-
-> **Notă:** Adaugă capturile de ecran în folderul `screenshots/`
+| ![Sports News](screenshots/sports_news.jpeg) | ![Sports Live](screenshots/sports_live.jpeg) | ![Games](screenshots/games.jpeg) |
 
 ---
 
