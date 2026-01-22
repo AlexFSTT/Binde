@@ -105,6 +105,8 @@ class CartNotifier extends Notifier<List<CartItem>> {
     final item = state.where((item) => item.product.id == productId).firstOrNull;
     return item?.quantity ?? 0;
   }
+
+  void updateQuantity(String id, int i) {}
 }
 
 /// Provider pentru totalul coșului (formatat)

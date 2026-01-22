@@ -1,0 +1,139 @@
+/// Traduceri în limba Engleză
+const Map<String, String> en = {
+  // General
+  'app_name': 'Binde',
+  'loading': 'Loading...',
+  'error': 'Error',
+  'success': 'Success',
+  'cancel': 'Cancel',
+  'save': 'Save',
+  'delete': 'Delete',
+  'edit': 'Edit',
+  'close': 'Close',
+  'retry': 'Retry',
+  'search': 'Search',
+  'all': 'All',
+  'coming_soon': 'Coming soon!',
+
+  // Auth
+  'login': 'Login',
+  'register': 'Register',
+  'logout': 'Logout',
+  'email': 'Email',
+  'password': 'Password',
+  'confirm_password': 'Confirm password',
+  'full_name': 'Full name',
+  'forgot_password': 'Forgot password?',
+  'reset_password': 'Reset password',
+  'no_account': "Don't have an account?",
+  'have_account': 'Already have an account?',
+  'login_success': 'Login successful!',
+  'register_success': 'Account created successfully!',
+  'logout_confirm': 'Are you sure you want to log out?',
+  'logout_button': 'Log out',
+
+  // Validation
+  'email_required': 'Please enter your email',
+  'email_invalid': 'Please enter a valid email',
+  'password_required': 'Please enter your password',
+  'password_min_length': 'Password must be at least 6 characters',
+  'password_mismatch': 'Passwords do not match',
+  'name_required': 'Please enter your name',
+  'name_min_length': 'Name must be at least 2 characters',
+
+  // Navigation
+  'nav_chat': 'Chat',
+  'nav_learn': 'Learn',
+  'nav_videos': 'Videos',
+  'nav_shop': 'Shop',
+  'nav_sports': 'Sports',
+  'nav_games': 'Games',
+
+  // Profile
+  'profile': 'Profile',
+  'my_profile': 'My Profile',
+  'edit_profile': 'Edit profile',
+  'bio': 'Bio',
+  'bio_hint': 'Tell us about yourself...',
+  'profile_updated': 'Profile updated successfully!',
+  'email_cannot_change': 'Email cannot be changed from the app.',
+
+  // Settings
+  'settings': 'Settings',
+  'notifications': 'Notifications',
+  'language': 'Language',
+  'theme': 'Theme',
+  'theme_auto': 'Automatic',
+  'theme_light': 'Light',
+  'theme_dark': 'Dark',
+  'theme_system': 'Follow system theme',
+  'help_support': 'Help & Support',
+  'about_app': 'About app',
+
+  // Learn
+  'lessons': 'Lessons',
+  'lesson_details': 'Lesson details',
+  'minutes': 'minutes',
+  'no_lessons': 'No lessons available.',
+
+  // Videos
+  'videos': 'Videos',
+  'video_player': 'Video Player',
+  'views': 'views',
+  'no_videos': 'No videos available.',
+  'loading_video': 'Loading video...',
+
+  // Shop
+  'shop': 'Shop',
+  'products': 'Products',
+  'cart': 'Cart',
+  'checkout': 'Checkout',
+  'add_to_cart': 'Add to cart',
+  'remove_from_cart': 'Remove from cart',
+  'cart_empty': 'Cart is empty',
+  'cart_empty_message': 'Add products from the shop to get started.',
+  'total': 'Total',
+  'place_order': 'Place order',
+  'order_success': 'Order placed successfully!',
+  'order_success_message': 'Thank you for your order! You will receive a confirmation email.',
+  'in_stock': 'In stock',
+  'out_of_stock': 'Out of stock',
+  'items': 'items',
+  'no_products': 'No products available.',
+
+  // Sports
+  'sports': 'Sports',
+  'news': 'News',
+  'live': 'Live',
+  'football': 'Football',
+  'f1': 'Formula 1',
+  'tennis': 'Tennis',
+  'live_now': 'LIVE NOW',
+  'upcoming': 'Upcoming',
+  'finished': 'Finished',
+  'watch': 'Watch',
+  'no_news': 'No news available.',
+  'no_events': 'No events available.',
+  'loading_stream': 'Loading live stream...',
+
+  // Games
+  'games': 'Games',
+  'play': 'Play',
+  'in_development': 'In development',
+  'game_coming_soon': 'This game will be available soon!\nCome back later to play.',
+  'notify_me': 'Notify me when ready',
+  'will_notify': 'You will be notified when the game is available!',
+  'no_games': 'No games available.',
+
+  // Chat
+  'conversations': 'Conversations',
+  'new_message': 'New message',
+  'type_message': 'Type a message...',
+  'no_conversations': 'No conversations.',
+
+  // Errors
+  'error_loading': 'Loading error',
+  'error_unknown': 'Unknown error',
+  'error_connection': 'Connection error',
+  'try_again': 'Try again',
+};

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/lesson_model.dart';
 import '../../services/learn_service.dart';
+import '../../l10n/app_localizations.dart';
 import 'lesson_detail_screen.dart';
 
 class LessonsListScreen extends StatefulWidget {
@@ -12,7 +13,7 @@ class LessonsListScreen extends StatefulWidget {
 
 class _LessonsListScreenState extends State<LessonsListScreen> {
   final LearnService _learnService = LearnService();
-  
+
   List<Lesson> _lessons = [];
   List<String> _categories = [];
   String? _selectedCategory;
@@ -32,7 +33,6 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
     });
 
     try {
-      // Încarcă lecțiile și categoriile în paralel
       final results = await Future.wait([
         _learnService.getLessons(),
         _learnService.getCategories(),
@@ -64,7 +64,7 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Learn'),
+        title: Text(context.tr('nav_learn')),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -91,23 +91,14 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(
-              'Eroare la încărcare',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(context.tr('error_loading'), style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text(
-              _error ?? 'Eroare necunoscută',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
+            Text(_error ?? context.tr('error_unknown'), textAlign: TextAlign.center),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadData,
               icon: const Icon(Icons.refresh),
-              label: const Text('Încearcă din nou'),
+              label: Text(context.tr('try_again')),
             ),
           ],
         ),
@@ -126,7 +117,7 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
-          const Text('Nu există lecții disponibile.'),
+          Text(context.tr('no_lessons')),
         ],
       ),
     );
@@ -145,30 +136,28 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 children: [
-                  // Buton "Toate"
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
-                      label: const Text('Toate'),
+                      label: Text(context.tr('all')),
                       selected: _selectedCategory == null,
                       onSelected: (selected) {
                         setState(() => _selectedCategory = null);
                       },
                     ),
                   ),
-                  // Butoane pentru fiecare categorie
                   ..._categories.map((category) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(category),
-                      selected: _selectedCategory == category,
-                      onSelected: (selected) {
-                        setState(() {
-                          _selectedCategory = selected ? category : null;
-                        });
-                      },
-                    ),
-                  )),
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(category),
+                          selected: _selectedCategory == category,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedCategory = selected ? category : null;
+                            });
+                          },
+                        ),
+                      )),
                 ],
               ),
             ),
@@ -192,7 +181,71 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
   Widget _buildLessonCard(Lesson lesson, ColorScheme colorScheme) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(
+          backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
+          child: Text(
+            lesson.orderIndex.toString(),
+            style: TextStyle(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          lesson.title,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (lesson.description != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                lesson.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (lesson.category != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      lesson.category!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Icon(
+                  Icons.timer_outlined,
+                  size: 14,
+                  color: colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${lesson.durationMinutes} ${context.tr('minutes')}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.push(
             context,
@@ -201,118 +254,7 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Icon sau imagine
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getCategoryIcon(lesson.category),
-                  color: colorScheme.primary,
-                  size: 30,
-                ),
-              ),
-
-              const SizedBox(width: 16),
-
-              // Conținut text
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Categorie
-                    if (lesson.category != null)
-                      Text(
-                        lesson.category!.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-
-                    const SizedBox(height: 4),
-
-                    // Titlu
-                    Text(
-                      lesson.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    // Descriere
-                    if (lesson.description != null)
-                      Text(
-                        lesson.description!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    // Durată
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          lesson.formattedDuration,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Săgeată
-              Icon(
-                Icons.chevron_right,
-                color: colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
-            ],
-          ),
-        ),
       ),
     );
-  }
-
-  IconData _getCategoryIcon(String? category) {
-    switch (category?.toLowerCase()) {
-      case 'basics':
-        return Icons.star_outline;
-      case 'features':
-        return Icons.widgets_outlined;
-      case 'shopping':
-        return Icons.shopping_bag_outlined;
-      case 'games':
-        return Icons.sports_esports_outlined;
-      default:
-        return Icons.school_outlined;
-    }
   }
 }

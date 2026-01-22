@@ -1,0 +1,139 @@
+/// Traduceri în limba Română
+const Map<String, String> ro = {
+  // General
+  'app_name': 'Binde',
+  'loading': 'Se încarcă...',
+  'error': 'Eroare',
+  'success': 'Succes',
+  'cancel': 'Anulează',
+  'save': 'Salvează',
+  'delete': 'Șterge',
+  'edit': 'Editează',
+  'close': 'Închide',
+  'retry': 'Încearcă din nou',
+  'search': 'Caută',
+  'all': 'Toate',
+  'coming_soon': 'În curând!',
+
+  // Auth
+  'login': 'Conectare',
+  'register': 'Înregistrare',
+  'logout': 'Deconectare',
+  'email': 'Email',
+  'password': 'Parolă',
+  'confirm_password': 'Confirmă parola',
+  'full_name': 'Nume complet',
+  'forgot_password': 'Ai uitat parola?',
+  'reset_password': 'Resetează parola',
+  'no_account': 'Nu ai cont?',
+  'have_account': 'Ai deja cont?',
+  'login_success': 'Autentificare reușită!',
+  'register_success': 'Cont creat cu succes!',
+  'logout_confirm': 'Ești sigur că vrei să te deconectezi?',
+  'logout_button': 'Deconectează-mă',
+
+  // Validation
+  'email_required': 'Te rugăm să introduci emailul',
+  'email_invalid': 'Te rugăm să introduci un email valid',
+  'password_required': 'Te rugăm să introduci parola',
+  'password_min_length': 'Parola trebuie să aibă minim 6 caractere',
+  'password_mismatch': 'Parolele nu coincid',
+  'name_required': 'Te rugăm să introduci numele',
+  'name_min_length': 'Numele trebuie să aibă minim 2 caractere',
+
+  // Navigation
+  'nav_chat': 'Chat',
+  'nav_learn': 'Learn',
+  'nav_videos': 'Videos',
+  'nav_shop': 'Shop',
+  'nav_sports': 'Sports',
+  'nav_games': 'Games',
+
+  // Profile
+  'profile': 'Profil',
+  'my_profile': 'Profilul meu',
+  'edit_profile': 'Editează profilul',
+  'bio': 'Bio',
+  'bio_hint': 'Spune ceva despre tine...',
+  'profile_updated': 'Profil actualizat cu succes!',
+  'email_cannot_change': 'Email-ul nu poate fi modificat din aplicație.',
+
+  // Settings
+  'settings': 'Setări',
+  'notifications': 'Notificări',
+  'language': 'Limbă',
+  'theme': 'Temă',
+  'theme_auto': 'Automată',
+  'theme_light': 'Light',
+  'theme_dark': 'Dark',
+  'theme_system': 'Urmează tema sistemului',
+  'help_support': 'Ajutor & Suport',
+  'about_app': 'Despre aplicație',
+
+  // Learn
+  'lessons': 'Lecții',
+  'lesson_details': 'Detalii lecție',
+  'minutes': 'minute',
+  'no_lessons': 'Nu există lecții disponibile.',
+
+  // Videos
+  'videos': 'Video-uri',
+  'video_player': 'Player Video',
+  'views': 'vizualizări',
+  'no_videos': 'Nu există video-uri disponibile.',
+  'loading_video': 'Se încarcă video-ul...',
+
+  // Shop
+  'shop': 'Magazin',
+  'products': 'Produse',
+  'cart': 'Coș',
+  'checkout': 'Finalizare comandă',
+  'add_to_cart': 'Adaugă în coș',
+  'remove_from_cart': 'Elimină din coș',
+  'cart_empty': 'Coșul este gol',
+  'cart_empty_message': 'Adaugă produse din magazin pentru a începe.',
+  'total': 'Total',
+  'place_order': 'Plasează comanda',
+  'order_success': 'Comandă plasată cu succes!',
+  'order_success_message': 'Mulțumim pentru comandă! Vei primi un email de confirmare.',
+  'in_stock': 'În stoc',
+  'out_of_stock': 'Stoc epuizat',
+  'items': 'articole',
+  'no_products': 'Nu există produse disponibile.',
+
+  // Sports
+  'sports': 'Sporturi',
+  'news': 'Știri',
+  'live': 'Live',
+  'football': 'Fotbal',
+  'f1': 'Formula 1',
+  'tennis': 'Tenis',
+  'live_now': 'LIVE ACUM',
+  'upcoming': 'În curând',
+  'finished': 'Încheiate',
+  'watch': 'Urmărește',
+  'no_news': 'Nu există știri disponibile.',
+  'no_events': 'Nu există evenimente disponibile.',
+  'loading_stream': 'Se încarcă stream-ul live...',
+
+  // Games
+  'games': 'Jocuri',
+  'play': 'Joacă',
+  'in_development': 'În dezvoltare',
+  'game_coming_soon': 'Acest joc va fi disponibil în curând!\nRevino mai târziu pentru a juca.',
+  'notify_me': 'Notifică-mă când e gata',
+  'will_notify': 'Vei fi notificat când jocul va fi disponibil!',
+  'no_games': 'Nu există jocuri disponibile.',
+
+  // Chat
+  'conversations': 'Conversații',
+  'new_message': 'Mesaj nou',
+  'type_message': 'Scrie un mesaj...',
+  'no_conversations': 'Nu există conversații.',
+
+  // Errors
+  'error_loading': 'Eroare la încărcare',
+  'error_unknown': 'Eroare necunoscută',
+  'error_connection': 'Eroare de conexiune',
+  'try_again': 'Încearcă din nou',
+};

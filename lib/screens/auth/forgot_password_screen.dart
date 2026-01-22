@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -9,199 +10,123 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
-  
+  final _emailController = TextEditingController();
+
   bool _isLoading = false;
-  bool _emailSent = false;
-  
+
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
   }
-  
-  Future<void> _handleResetPassword() async {
+
+  Future<void> _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     final result = await _authService.resetPassword(_emailController.text.trim());
-    
+
     setState(() => _isLoading = false);
-    
+
     if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: result.isSuccess ? Colors.green : Colors.red,
+        ),
+      );
+
       if (result.isSuccess) {
-        setState(() => _emailSent = true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message),
-            backgroundColor: Colors.red,
-          ),
-        );
+        Navigator.pop(context);
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resetare parolă'),
+        title: Text(context.tr('reset_password')),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: _emailSent ? _buildSuccessView(colorScheme) : _buildFormView(colorScheme),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildFormView(ColorScheme colorScheme) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 20),
-          
-          Icon(
-            Icons.lock_reset,
-            size: 80,
-            color: colorScheme.primary,
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Text(
-            'Ai uitat parola?',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          Text(
-            'Introdu adresa de email și îți vom trimite un link pentru a-ți reseta parola.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _handleResetPassword(),
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              hintText: 'exemplu@email.com',
-              prefixIcon: Icon(Icons.email_outlined),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Te rugăm să introduci email-ul';
-              }
-              if (!value.contains('@')) {
-                return 'Te rugăm să introduci un email valid';
-              }
-              return null;
-            },
-          ),
-          
-          const SizedBox(height: 24),
-          
-          SizedBox(
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _handleResetPassword,
-              child: _isLoading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text(
-                    'Trimite link de resetare',
-                    style: TextStyle(fontSize: 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 40),
+
+                // Icon
+                Icon(
+                  Icons.lock_reset,
+                  size: 80,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+
+                const SizedBox(height: 24),
+
+                // Titlu
+                Text(
+                  context.tr('reset_password'),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: 32),
+
+                // Email
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _resetPassword(),
+                  decoration: InputDecoration(
+                    labelText: context.tr('email'),
+                    hintText: 'exemplu@email.com',
+                    prefixIcon: const Icon(Icons.email_outlined),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return context.tr('email_required');
+                    }
+                    if (!value.contains('@') || !value.contains('.')) {
+                      return context.tr('email_invalid');
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                // Buton
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _resetPassword,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            context.tr('reset_password'),
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-    );
-  }
-  
-  Widget _buildSuccessView(ColorScheme colorScheme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 40),
-        
-        Icon(
-          Icons.mark_email_read,
-          size: 80,
-          color: Colors.green,
-        ),
-        
-        const SizedBox(height: 24),
-        
-        Text(
-          'Email trimis!',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.green,
-          ),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        Text(
-          'Am trimis un link de resetare la:\n${_emailController.text}',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        Text(
-          'Verifică inbox-ul și folder-ul de spam.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: colorScheme.onSurface.withValues(alpha: 0.5),
-            fontSize: 14,
-          ),
-        ),
-        
-        const SizedBox(height: 32),
-        
-        SizedBox(
-          height: 56,
-          child: ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Înapoi la Login',
-              style: TextStyle(fontSize: 16),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../chat/conversations_screen.dart';
 import '../learn/lessons_list_screen.dart';
 import '../videos/videos_feed_screen.dart';
@@ -40,36 +41,36 @@ class _HomeScreenState extends State<HomeScreen> {
             _currentIndex = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label: 'Chat',
+            icon: const Icon(Icons.chat_bubble_outline),
+            selectedIcon: const Icon(Icons.chat_bubble),
+            label: context.tr('nav_chat'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.school_outlined),
-            selectedIcon: Icon(Icons.school),
-            label: 'Learn',
+            icon: const Icon(Icons.school_outlined),
+            selectedIcon: const Icon(Icons.school),
+            label: context.tr('nav_learn'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.play_circle_outline),
-            selectedIcon: Icon(Icons.play_circle),
-            label: 'Videos',
+            icon: const Icon(Icons.play_circle_outline),
+            selectedIcon: const Icon(Icons.play_circle),
+            label: context.tr('nav_videos'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.storefront_outlined),
-            selectedIcon: Icon(Icons.storefront),
-            label: 'Shop',
+            icon: const Icon(Icons.storefront_outlined),
+            selectedIcon: const Icon(Icons.storefront),
+            label: context.tr('nav_shop'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.sports_soccer_outlined),
-            selectedIcon: Icon(Icons.sports_soccer),
-            label: 'Sports',
+            icon: const Icon(Icons.sports_soccer_outlined),
+            selectedIcon: const Icon(Icons.sports_soccer),
+            label: context.tr('nav_sports'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.sports_esports_outlined),
-            selectedIcon: Icon(Icons.sports_esports),
-            label: 'Games',
+            icon: const Icon(Icons.sports_esports_outlined),
+            selectedIcon: const Icon(Icons.sports_esports),
+            label: context.tr('nav_games'),
           ),
         ],
       ),
@@ -86,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Alias pentru ProductsListScreen
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
 
