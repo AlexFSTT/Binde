@@ -62,7 +62,7 @@ class _GamesListScreenState extends State<GamesListScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+appBar: AppBar(
         title: const Text('Games'),
         actions: [
           IconButton(

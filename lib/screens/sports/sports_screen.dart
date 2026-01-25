@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'sports_news_tab.dart';
 import 'sports_live_tab.dart';
 
@@ -30,17 +31,17 @@ class _SportsScreenState extends State<SportsScreen> with SingleTickerProviderSt
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sports'),
+        title: Text(context.tr('nav_sports')),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
+          tabs: [
             Tab(
-              icon: Icon(Icons.newspaper),
-              text: 'News',
+              icon: const Icon(Icons.newspaper),
+              text: context.tr('news'),
             ),
             Tab(
-              icon: Icon(Icons.live_tv),
-              text: 'Live',
+              icon: const Icon(Icons.live_tv),
+              text: context.tr('live'),
             ),
           ],
           indicatorColor: colorScheme.primary,

@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ShopScreen(),
     SportsScreen(),
     GamesListScreen(),
+    ProfileScreenTab(), // Profil ca tab
   ];
 
   @override
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _currentIndex = index;
           });
         },
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.chat_bubble_outline),
@@ -72,16 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedIcon: const Icon(Icons.sports_esports),
             label: context.tr('nav_games'),
           ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: context.tr('profile'),
+          ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-        },
-        child: const Icon(Icons.person),
       ),
     );
   }
@@ -93,5 +91,15 @@ class ShopScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const ProductsListScreen();
+  }
+}
+
+/// Wrapper pentru ProfileScreen ca tab (fără AppBar back button)
+class ProfileScreenTab extends StatelessWidget {
+  const ProfileScreenTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const ProfileScreen();
   }
 }

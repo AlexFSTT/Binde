@@ -63,14 +63,8 @@ class _LessonsListScreenState extends State<LessonsListScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+appBar: AppBar(
         title: Text(context.tr('nav_learn')),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

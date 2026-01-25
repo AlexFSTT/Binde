@@ -64,12 +64,6 @@ class _VideosFeedScreenState extends State<VideosFeedScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Videos'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

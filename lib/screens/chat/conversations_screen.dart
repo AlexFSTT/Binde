@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 class ConversationsScreen extends StatelessWidget {
   const ConversationsScreen({super.key});
@@ -6,21 +7,10 @@ class ConversationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chat'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_square),
-            onPressed: () {
-              // TODO: Deschide conversație nouă
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Conversație nouă - în curând!')),
-              );
-            },
-          ),
-        ],
+     appBar: AppBar(
+        title: Text(context.tr('nav_learn')),
       ),
       body: Center(
         child: Column(
@@ -29,24 +19,30 @@ class ConversationsScreen extends StatelessWidget {
             Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: colorScheme.primary.withValues(alpha: 0.5),
+              color: colorScheme.primary.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
-              'Chat',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              context.tr('no_conversations'),
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Conversațiile tale vor apărea aici.',
+              context.tr('coming_soon'),
               style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('coming_soon'))),
+          );
+        },
+        child: const Icon(Icons.edit),
       ),
     );
   }

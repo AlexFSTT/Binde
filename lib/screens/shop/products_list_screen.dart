@@ -66,7 +66,7 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+appBar: AppBar(
         title: const Text('Shop'),
         actions: [
           // Buton coș cu badge
@@ -87,7 +87,7 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
                   top: 6,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
                     ),
