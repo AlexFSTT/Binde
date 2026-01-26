@@ -8,6 +8,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/settings_provider.dart';
+import 'managers/app_lifecycle_manager.dart';  // ← ADĂUGAT
 
 /// Instanța globală Supabase
 final supabase = Supabase.instance.client;
@@ -41,45 +42,48 @@ class BindeApp extends ConsumerWidget {
     }
     // Dacă locale e null, Flutter va folosi automat limba sistemului
 
-    return MaterialApp(
-      title: 'Binde',
-      debugShowCheckedModeBanner: false,
-      
-      // Tema
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: settings.flutterThemeMode,
-      
-      // Localizare
-      locale: locale,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      localeResolutionCallback: (deviceLocale, supportedLocales) {
-        // Dacă utilizatorul a setat manual limba, folosește-o
-        if (locale != null) {
-          return locale;
-        }
+    // ✅ ÎNFĂȘURĂM MaterialApp CU AppLifecycleManager
+    return AppLifecycleManager(
+      child: MaterialApp(
+        title: 'Binde',
+        debugShowCheckedModeBanner: false,
         
-        // Altfel, încearcă să găsească limba dispozitivului în cele suportate
-        if (deviceLocale != null) {
-          for (final supportedLocale in supportedLocales) {
-            if (supportedLocale.languageCode == deviceLocale.languageCode) {
-              return supportedLocale;
+        // Tema
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: settings.flutterThemeMode,
+        
+        // Localizare
+        locale: locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        localeResolutionCallback: (deviceLocale, supportedLocales) {
+          // Dacă utilizatorul a setat manual limba, folosește-o
+          if (locale != null) {
+            return locale;
+          }
+          
+          // Altfel, încearcă să găsească limba dispozitivului în cele suportate
+          if (deviceLocale != null) {
+            for (final supportedLocale in supportedLocales) {
+              if (supportedLocale.languageCode == deviceLocale.languageCode) {
+                return supportedLocale;
+              }
             }
           }
-        }
+          
+          // Fallback la română
+          return const Locale('ro');
+        },
         
-        // Fallback la română
-        return const Locale('ro');
-      },
-      
-      // Ecranul inițial
-      home: const AuthWrapper(),
+        // Ecranul inițial
+        home: const AuthWrapper(),
+      ),
     );
   }
 }

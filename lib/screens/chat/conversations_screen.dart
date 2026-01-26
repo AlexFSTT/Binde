@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/conversation_model.dart';
 import '../../services/chat_service.dart';
@@ -6,8 +7,7 @@ import 'chat_detail_screen.dart';
 import 'user_selector_screen.dart';
 
 /// Ecran pentru lista de conversații
-/// Afișează toate conversațiile utilizatorului curent
-/// și permite navigarea către ecranul de chat 1-la-1
+/// ✅ DESIGN NOU: Card care "iese" din avatar - avatar overlap pe margine
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({super.key});
 
@@ -17,51 +17,127 @@ class ConversationsScreen extends StatefulWidget {
 
 class _ConversationsScreenState extends State<ConversationsScreen> {
   final ChatService _chatService = ChatService();
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
   List<Conversation> _conversations = [];
+  Map<String, int> _unreadCounts = {};
   bool _isLoading = true;
   String? _error;
+  
+  RealtimeChannel? _messagesChannel;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _setupRealtimeSubscription();
   }
 
-  /// Încarcă conversațiile din Supabase
-  Future<void> _loadConversations() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _removeRealtimeSubscription();
+    super.dispose();
+  }
 
-    try {
-      final conversations = await _chatService.getConversations();
-      setState(() {
-        _conversations = conversations;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+  void _setupRealtimeSubscription() {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    debugPrint('🔔 Setting up Realtime subscription for conversations');
+
+    _messagesChannel = _supabase
+        .channel('all_messages')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            debugPrint('📨 Received message update via Realtime');
+            _loadConversations();
+          },
+        )
+        .subscribe();
+  }
+
+  void _removeRealtimeSubscription() {
+    if (_messagesChannel != null) {
+      debugPrint('🔕 Removing Realtime subscription');
+      _supabase.removeChannel(_messagesChannel!);
     }
   }
 
-  /// Navighează către ecranul de chat cu un utilizator
+  Future<void> _loadConversations() async {
+    if (_conversations.isEmpty) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final conversations = await _chatService.getConversations();
+      
+      final unreadCounts = <String, int>{};
+      for (final conversation in conversations) {
+        final count = await _getUnreadCount(conversation.id);
+        if (count > 0) {
+          unreadCounts[conversation.id] = count;
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _conversations = conversations;
+          _unreadCounts = unreadCounts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<int> _getUnreadCount(String conversationId) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) return 0;
+
+      final response = await _supabase
+          .from('messages')
+          .select('id')
+          .eq('conversation_id', conversationId)
+          .eq('is_read', false)
+          .neq('sender_id', currentUserId)
+          .count();
+
+      return response.count;
+    } catch (e) {
+      debugPrint('Error getting unread count: $e');
+      return 0;
+    }
+  }
+
   void _openChat(Conversation conversation) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ChatDetailScreen(
           conversation: conversation,
-          onMessageSent: _loadConversations, // Reîncarcă lista când se trimite un mesaj
+          onMessageSent: () {
+            _loadConversations();
+          },
         ),
       ),
-    );
+    ).then((_) {
+      _loadConversations();
+    });
   }
 
-  /// Navighează către ecranul de selectare utilizatori
   void _openUserSelector() {
     Navigator.push(
       context,
@@ -69,7 +145,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         builder: (context) => const UserSelectorScreen(),
       ),
     ).then((_) {
-      // Când revenim din ecranul de selectare, reîncărcăm conversațiile
       _loadConversations();
     });
   }
@@ -82,10 +157,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       appBar: AppBar(
         title: Text(context.tr('nav_chat')),
         actions: [
-          // Buton pentru a actualiza lista
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadConversations,
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -97,16 +172,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     );
   }
 
-  /// Construiește corpul ecranului în funcție de stare
   Widget _buildBody(ColorScheme colorScheme) {
-    // Dacă se încarcă, afișăm un indicator de loading
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    // Dacă există o eroare, afișăm mesajul de eroare
     if (_error != null) {
       return Center(
         child: Column(
@@ -141,7 +213,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       );
     }
 
-    // Dacă nu există conversații, afișăm un mesaj informativ
     if (_conversations.isEmpty) {
       return Center(
         child: Column(
@@ -169,74 +240,222 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       );
     }
 
-    // Afișăm lista de conversații
     return RefreshIndicator(
       onRefresh: _loadConversations,
       child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4), // ✅ Redus de la 12/8
         itemCount: _conversations.length,
         itemBuilder: (context, index) {
           final conversation = _conversations[index];
-          return _buildConversationItem(conversation, colorScheme);
+          final unreadCount = _unreadCounts[conversation.id] ?? 0;
+          return _buildConversationCard(conversation, colorScheme, unreadCount);
         },
       ),
     );
   }
 
-  /// Construiește un item din lista de conversații
-  Widget _buildConversationItem(Conversation conversation, ColorScheme colorScheme) {
-    return ListTile(
-      // Avatar-ul celuilalt participant
-      leading: CircleAvatar(
-        backgroundColor: colorScheme.primaryContainer,
-        backgroundImage: conversation.otherUserAvatar != null
-            ? NetworkImage(conversation.otherUserAvatar!)
-            : null,
-        child: conversation.otherUserAvatar == null
-            ? Text(
-                (conversation.otherUserName ?? '?')[0].toUpperCase(),
-                style: TextStyle(
-                  color: colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
+  /// ✅ DESIGN NOU: Card cu avatar overlapping - card "iese" din avatar
+  Widget _buildConversationCard(
+    Conversation conversation,
+    ColorScheme colorScheme,
+    int unreadCount,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 0, left: 2), // ✅ Zero gap între cards!
+      child: SizedBox(
+        height: 66, // ✅ Redus de la 76 la 66 pentru avatar mai mic
+        child: Stack(
+          children: [
+            // ✅ CARDUL - Începe EXACT unde e avatarul (cu overlap)
+            Positioned(
+              left: 26, // ✅ Card începe la jumătatea avatarului (52/2 = 26)
+              right: 0,
+              top: 7, // ✅ Centrat vertical (66-52)/2 = 7
+              bottom: 7,
+              child: Card(
+                margin: EdgeInsets.zero,
+                elevation: 2,
+                shadowColor: colorScheme.shadow.withValues(alpha: 0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              )
-            : null,
-      ),
-      // Numele celuilalt participant
-      title: Text(
-        conversation.otherUserName ?? 'Unknown User',
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      // Ultimul mesaj
-      subtitle: conversation.lastMessage != null
-          ? Text(
-              conversation.lastMessage!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            )
-          : Text(
-              context.tr('no_messages'),
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.5),
-                fontStyle: FontStyle.italic,
+                child: InkWell(
+                  onTap: () => _openChat(conversation),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 36, // ✅ Spațiu pentru avatar mai mic (26 overlap + 10 padding)
+                      right: 10, // ✅ Mai compact
+                      top: 5, // ✅ Mai compact
+                      bottom: 5, // ✅ Mai compact
+                    ),
+                    child: Row(
+                      children: [
+                        // Informații conversație
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Numele + badge necitite
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      conversation.otherUserName ?? 'Unknown User',
+                                      style: TextStyle(
+                                        fontWeight: unreadCount > 0
+                                            ? FontWeight.bold
+                                            : FontWeight.w600,
+                                        fontSize: 15, // ✅ Redus de la 16 la 15
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  // Badge mesaje necitite
+                                  if (unreadCount > 0) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        unreadCount > 99 ? '99+' : '$unreadCount',
+                                        style: TextStyle(
+                                          color: colorScheme.onPrimary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 1), // ✅ Minim spacing
+                              // Ultimul mesaj
+                              conversation.lastMessage != null
+                                  ? Text(
+                                      conversation.lastMessage!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: unreadCount > 0
+                                            ? colorScheme.onSurface.withValues(alpha: 0.9)
+                                            : colorScheme.onSurface.withValues(alpha: 0.7),
+                                        fontSize: 12, // ✅ Redus de la 13 la 12
+                                        fontWeight: unreadCount > 0
+                                            ? FontWeight.w500
+                                            : FontWeight.normal,
+                                      ),
+                                    )
+                                  : Text(
+                                      context.tr('no_messages'),
+                                      style: TextStyle(
+                                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: 12, // ✅ Redus de la 13 la 12
+                                      ),
+                                    ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Timpul în dreapta
+                        if (conversation.lastMessageAt != null)
+                          Text(
+                            _formatConversationTime(conversation.lastMessageAt!),
+                            style: TextStyle(
+                              color: unreadCount > 0
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 11, // ✅ Redus de la 12 la 11
+                              fontWeight: unreadCount > 0
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-      // Timpul ultimului mesaj
-      trailing: conversation.lastMessageAt != null
-          ? Text(
-              conversation.getFormattedTime(),
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.5),
-                fontSize: 12,
+            
+            // ✅ AVATARUL - Poziționat DEASUPRA cardului (overlap)
+            Positioned(
+              left: 0,
+              top: 7, // ✅ Centrat vertical (66-52)/2 = 7
+              child: Hero(
+                tag: 'avatar_${conversation.id}',
+                child: Container(
+                  width: 52, // ✅ Redus de la 64 la 52
+                  height: 52, // ✅ Redus de la 64 la 52
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    shape: BoxShape.circle,
+                    // Shadow pentru a-l "ridica" deasupra cardului
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(2, 2),
+                      ),
+                    ],
+                  ),
+                  // ✅ Center pentru a asigura poziționare consistentă
+                  child: Center(
+                    child: CircleAvatar(
+                      radius: 24, // ✅ Redus de la 30 la 24 (48x48)
+                      backgroundColor: colorScheme.primaryContainer,
+                      backgroundImage: conversation.otherUserAvatar != null
+                          ? NetworkImage(conversation.otherUserAvatar!)
+                          : null,
+                      child: conversation.otherUserAvatar == null
+                          ? Text(
+                              (conversation.otherUserName ?? '?')[0].toUpperCase(),
+                              style: TextStyle(
+                                color: colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20, // ✅ Redus de la 24 la 20
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
               ),
-            )
-          : null,
-      // La tap, deschidem conversația
-      onTap: () => _openChat(conversation),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  String _formatConversationTime(DateTime messageTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final messageDate = DateTime(messageTime.year, messageTime.month, messageTime.day);
+
+    final hour = messageTime.hour.toString().padLeft(2, '0');
+    final minute = messageTime.minute.toString().padLeft(2, '0');
+
+    if (messageDate.isAtSameMomentAs(today)) {
+      return '$hour:$minute';
+    }
+
+    if (messageDate.isAtSameMomentAs(yesterday)) {
+      return 'yesterday';
+    }
+
+    final day = messageTime.day.toString().padLeft(2, '0');
+    final month = messageTime.month.toString().padLeft(2, '0');
+
+    return '$day/$month';
   }
 }

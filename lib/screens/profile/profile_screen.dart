@@ -192,7 +192,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         showAboutDialog(
                           context: context,
                           applicationName: 'Binde',
-                          applicationVersion: '1.0.0',
+                          applicationVersion: '1.2.0',
                           applicationIcon: Icon(
                             Icons.rocket_launch,
                             size: 48,
