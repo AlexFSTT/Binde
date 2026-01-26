@@ -82,6 +82,8 @@ Comprehensive profile management with avatar uploads, settings, and preferences.
 
 ---
 
+<div align="center">
+
 ## Key Differentiators
 
 **All-in-One Platform** - 7 major features in a single app  
@@ -90,6 +92,8 @@ Comprehensive profile management with avatar uploads, settings, and preferences.
 **Modern Design** - Material Design 3 with dark mode  
 **Cross-platform** - Single codebase for iOS & Android  
 **Performance Optimized** - 60 FPS, production-grade UX  
+
+</div>
 
 ---
 
@@ -141,114 +145,194 @@ Comprehensive profile management with avatar uploads, settings, and preferences.
 
 ## Business Model
 
+<table>
+<tr>
+<td width="50%" valign="top">
+
 ### Revenue Streams (Planned)
 
-**1. Freemium Model**
+**Freemium Model**
 - Free tier with basic features
 - Premium subscription ($9.99/month) for advanced features
 
-**2. E-commerce Commissions**
+**E-commerce Commissions**
 - 10-15% commission on marketplace sales
 - Featured product placements
 
-**3. Advertising**
+</td>
+<td width="50%" valign="top">
+
+&nbsp;
+
+**Advertising**
 - Non-intrusive ads for free tier users
 - Sponsored content in feeds
 
-**4. In-app Purchases**
+**In-app Purchases**
 - Premium content access
 - Virtual goods and features
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## Technical Stack
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Technology
 
 **Frontend:** Flutter 3.38.7 (Dart)  
 **Backend:** Supabase (PostgreSQL, Realtime, Auth, Storage)  
 **State Management:** Riverpod  
 **Architecture:** Clean Architecture, Service-based  
 
-**Why This Stack?**
+</td>
+<td width="50%" valign="top">
+
+### Why This Stack?
+
 - Single codebase for iOS & Android (50% faster development)
 - Real-time capabilities built-in
 - Scalable backend infrastructure
 - Cost-effective for MVP & growth phases
 
+</td>
+</tr>
+</table>
+
 ---
 
 ## Market Opportunity
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### The Problem & Solution
 
 **Problem:** Users juggle 10+ apps daily for basic digital needs  
 **Solution:** Binde consolidates essential services into one platform  
 **Market Size:** Global mobile app market valued at $407B (2026)
 
-**Competitive Advantage:**
+</td>
+<td width="50%" valign="top">
+
+### Competitive Advantage
+
 - Integrated experience (vs. fragmented single-purpose apps)
 - Real-time technology across all features
 - Modern, performance-optimized UX
 - Cross-platform from day one
 
+</td>
+</tr>
+</table>
+
 ---
 
 ## Current Status
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Development Status
 
 **MVP Complete** - All 7 core modules functional  
 **Production Ready** - Tested on real devices  
 **Performance Validated** - 60 FPS, optimized UX  
 **Scalable Architecture** - Ready for growth  
 
-**Ready for:**
+</td>
+<td width="50%" valign="top">
+
+### Ready For
+
 - Beta testing program
 - Initial user acquisition
 - Feature expansion based on user feedback
 - Investment to accelerate development
 
+</td>
+</tr>
+</table>
+
 ---
+
+<div align="center">
 
 ## Metrics & Validation
 
-- **7 Major Features** fully implemented and tested
-- **60 FPS Performance** across all screens
-- **Real-time Updates** with <100ms latency
-- **Zero Critical Bugs** in production build
-- **Cross-platform** single codebase efficiency
+**7 Major Features** fully implemented and tested  
+**60 FPS Performance** across all screens  
+**Real-time Updates** with <100ms latency  
+**Zero Critical Bugs** in production build  
+**Cross-platform** single codebase efficiency
 
 **Testing Environment:**  
 Thoroughly tested on Samsung Galaxy S23 Ultra with all features validated in real-world usage scenarios.
 
+</div>
+
 ---
+
+<div align="center">
 
 ## Investment Opportunity
 
-Seeking **funding to accelerate development and market launch**:
+Seeking **funding to accelerate development and market launch**
 
-**Use of Funds:**
-1. **Development Team Expansion** - Full-stack developers, UI/UX designers
-2. **Feature Development** - Phases 1-3 (6-12 months)
-3. **Marketing & User Acquisition** - Launch campaigns
-4. **Infrastructure** - Scaling for 100K+ users
-5. **Legal & Compliance** - App store optimization, GDPR compliance
+### Use of Funds
+
+**Development Team Expansion** - Full-stack developers, UI/UX designers  
+**Feature Development** - Phases 1-3 (6-12 months)  
+**Marketing & User Acquisition** - Launch campaigns  
+**Infrastructure** - Scaling for 100K+ users  
+**Legal & Compliance** - App store optimization, GDPR compliance
 
 **Timeline to Launch:** 3-6 months with adequate funding  
 **Projected Break-even:** 12-18 months post-launch
 
+</div>
+
 ---
 
 ## Team
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Current Team
 
 **Founder/Developer:** Alex Fistis  
 - Full-stack mobile development
 - Built entire MVP from concept to production
 - Self-taught Flutter/Dart developer
 
-**Looking to add:**
+</td>
+<td width="50%" valign="top">
+
+### Looking to Add
+
 - CTO / Technical Lead
 - Senior Flutter Developers (2-3)
 - UI/UX Designer
 - Marketing Lead
 - Product Manager
 
+</td>
+</tr>
+</table>
+
 ---
+
+<div align="center">
 
 ## Contact
 
@@ -268,8 +352,6 @@ For investment opportunities, partnerships, or more information:
 Proprietary - All Rights Reserved
 
 ---
-
-<div align="center">
 
 **Built with Flutter & Supabase**
 
