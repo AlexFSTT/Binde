@@ -250,18 +250,6 @@ Seeking **funding to accelerate development and market launch**:
 
 ---
 
-## Contact
-
-**Project:** Binde - All-in-One Mobile Platform  
-**Status:** MVP Complete, Seeking Investment  
-**Location:** Romania  
-
-For investment opportunities, partnerships, or more information:  
-**Email:** [Your Email]  
-**Website:** [Your Website/Portfolio]  
-**LinkedIn:** [LinkedIn Profile]
-
----
 
 ## License
 
