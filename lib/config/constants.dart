@@ -6,7 +6,7 @@ class AppConstants {
   static const String appName = 'Binde';
   
   // Versiunea aplicației
-  static const String appVersion = '1.2.0';
+  static const String appVersion = '0.2.1';
   
   // Supabase - vom completa după ce creăm proiectul Supabase
   static const String supabaseUrl = 'https://uwxnknwnpocclqvpcstp.supabase.co';

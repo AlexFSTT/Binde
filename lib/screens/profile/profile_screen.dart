@@ -184,29 +184,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       },
                     ),
 
-                    _buildProfileOption(
-                      context,
-                      icon: Icons.info_outline,
-                      title: context.tr('about_app'),
-                      onTap: () {
-                        showAboutDialog(
-                          context: context,
-                          applicationName: 'Binde',
-                          applicationVersion: '1.2.0',
-                          applicationIcon: Icon(
-                            Icons.rocket_launch,
-                            size: 48,
-                            color: colorScheme.primary,
-                          ),
-                          children: const [
-                            Text(
-                              'Aplicația ta all-in-one pentru chat, învățare, video-uri, shopping, sporturi și jocuri.',
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-
                     const SizedBox(height: 16),
 
                     const Divider(),

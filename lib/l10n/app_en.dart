@@ -116,15 +116,6 @@ const Map<String, String> en = {
   'no_events': 'No events available.',
   'loading_stream': 'Loading live stream...',
 
-  // Games
-  'games': 'Games',
-  'play': 'Play',
-  'in_development': 'In development',
-  'game_coming_soon': 'This game will be available soon!\nCome back later to play.',
-  'notify_me': 'Notify me when ready',
-  'will_notify': 'You will be notified when the game is available!',
-  'no_games': 'No games available.',
-
   // Chat
   'conversations': 'Conversations',
   'new_message': 'New message',
@@ -136,4 +127,34 @@ const Map<String, String> en = {
   'error_unknown': 'Unknown error',
   'error_connection': 'Connection error',
   'try_again': 'Try again',
+
+  // Swirls (renamed from Videos)
+'swirls': 'Swirls',
+'swirl': 'Swirl',
+'no_swirls': 'No swirls available',
+'swirl_too_short': 'Swirl too short! Minimum 10 seconds.',
+'swirl_too_long': 'Swirl too long! Maximum 10 minutes.',
+'loading_swirl': 'Loading swirl...',
+'swirls_feed': 'Swirls Feed',
+'nav_swirls': 'Swirls',
+
+// Updates
+'updates': 'Updates',
+'app_updates': 'App Updates',
+'no_updates': 'No updates yet',
+'update_detail': 'Update Details',
+
+// Tools
+'tools': 'Tools',
+'tools_coming_soon': 'Tools Coming Soon',
+
+// More/Hamburger
+'more': 'More',
+'more_options': 'More Options',
+
+// Hamburger Menu
+'about_binde': 'About Binde',
+'binde_tagline': 'Binde - All-in-One Mobile Platform',
+'binde_description': 'A complete platform that combines Chat, Learn, Swirls, Shop, Sports and much more in a single application.',
+'version': 'Version',
 };

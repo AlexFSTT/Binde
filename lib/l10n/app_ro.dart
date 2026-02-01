@@ -116,15 +116,6 @@ const Map<String, String> ro = {
   'no_events': 'Nu există evenimente disponibile.',
   'loading_stream': 'Se încarcă stream-ul live...',
 
-  // Games
-  'games': 'Jocuri',
-  'play': 'Joacă',
-  'in_development': 'În dezvoltare',
-  'game_coming_soon': 'Acest joc va fi disponibil în curând!\nRevino mai târziu pentru a juca.',
-  'notify_me': 'Notifică-mă când e gata',
-  'will_notify': 'Vei fi notificat când jocul va fi disponibil!',
-  'no_games': 'Nu există jocuri disponibile.',
-
   // Chat
   'conversations': 'Conversații',
   'new_message': 'Mesaj nou',
@@ -136,4 +127,36 @@ const Map<String, String> ro = {
   'error_unknown': 'Eroare necunoscută',
   'error_connection': 'Eroare de conexiune',
   'try_again': 'Încearcă din nou',
+
+
+
+  // Swirls
+'swirls': 'Swirls',
+'swirl': 'Swirl',
+'no_swirls': 'Nu există swirls disponibile',
+'swirl_too_short': 'Swirl prea scurt! Minim 10 secunde.',
+'swirl_too_long': 'Swirl prea lung! Maxim 10 minute.',
+'loading_swirl': 'Se încarcă swirl...',
+'swirls_feed': 'Feed Swirls',
+'nav_swirls': 'Swirls',
+
+// Updates
+'updates': 'Actualizări',
+'app_updates': 'Actualizări Aplicație',
+'no_updates': 'Nu există actualizări încă',
+'update_detail': 'Detalii Actualizare',
+
+// Tools
+'tools': 'Instrumente',
+'tools_coming_soon': 'Instrumente în curând',
+
+// More/Hamburger
+'more': 'Mai mult',
+'more_options': 'Mai multe opțiuni',
+
+// Hamburger Menu
+'about_binde': 'Despre Binde',
+'binde_tagline': 'Binde - Platformă All-in-One',
+'binde_description': 'O platformă completă care combină Chat, Learn, Swirls, Shop, Sports și multe altele într-o singură aplicație.',
+'version': 'Versiune',
 };
