@@ -3,11 +3,9 @@ import '../../l10n/app_localizations.dart';
 import '../../widgets/common/hamburger_menu.dart';
 import '../chat/conversations_screen.dart';
 import '../learn/lessons_list_screen.dart';
-import '../swirls/swirls_feed_screen.dart';  // ✅ RENAMED from videos
+import '../swirls/swirls_feed_screen.dart';
 import '../shop/products_list_screen.dart';
 import '../sports/sports_screen.dart';
-// ✅ REMOVED: games import
-// ✅ REMOVED: profile import (now in hamburger menu)
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,26 +17,52 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   
-  // ✅ GlobalKey pentru a deschide drawer-ul
+  // ✅ GlobalKey pentru Swirls feed
+  final GlobalKey<SwirlsFeedScreenState> _swirlsFeedKey = GlobalKey<SwirlsFeedScreenState>();
+  
+  // GlobalKey pentru drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ✅ UPDATED: 5 screens (fără Games și Profile)
-  // Profile e acum în hamburger menu, nu în bottom nav
-  final List<Widget> _screens = const [
-    ConversationsScreen(),     // 0 - Chat
-    LessonsListScreen(),       // 1 - Learn
-    SwirlsFeedScreen(),        // 2 - Swirls (renamed from Videos)
-    ShopScreen(),              // 3 - Shop
-    SportsScreen(),            // 4 - Sports
-    // Index 5 = Hamburger menu (nu e screen, deschide drawer)
-  ];
+  // ✅ UPDATED: Folosim GlobalKey pentru SwirlsFeedScreen
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Inițializăm screens cu GlobalKey pentru Swirls
+    _screens = [
+      const ConversationsScreen(),     // 0 - Chat
+      const LessonsListScreen(),       // 1 - Learn
+      SwirlsFeedScreen(key: _swirlsFeedKey), // ✅ 2 - Swirls (cu GlobalKey!)
+      const ShopScreen(),              // 3 - Shop
+      const SportsScreen(),            // 4 - Sports
+    ];
+  }
 
   void _onNavigationTap(int index) {
     if (index == 5) {
-      // ✅ Hamburger menu - deschide drawer
+      // Hamburger menu - deschide drawer
       _scaffoldKey.currentState?.openDrawer();
     } else {
-      // ✅ Normal navigation
+      // ✅ DETECTARE SCHIMBARE TAB pentru Swirls
+      final oldIndex = _currentIndex;
+      const swirlsIndex = 2; // Swirls e pe index 2
+      
+      // Detectează când INTRI în Swirls
+      if (index == swirlsIndex && oldIndex != swirlsIndex) {
+        // INTRAT în Swirls → pornește video
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _swirlsFeedKey.currentState?.onTabVisible();
+        });
+      }
+      
+      // Detectează când IEȘI din Swirls
+      if (oldIndex == swirlsIndex && index != swirlsIndex) {
+        // IEȘIT din Swirls → oprește video
+        _swirlsFeedKey.currentState?.onTabHidden();
+      }
+      
       setState(() {
         _currentIndex = index;
       });
@@ -50,7 +74,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key: _scaffoldKey,
       
-      // ✅ ADDED: Hamburger drawer cu Updates, Profile, Tools
       drawer: const HamburgerMenu(),
       
       body: IndexedStack(
@@ -58,10 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
         children: _screens,
       ),
       
-      // ✅ UPDATED: 5 items + hamburger (6 total)
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: _onNavigationTap,  // ✅ Custom handler pentru hamburger
+        onDestinationSelected: _onNavigationTap,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           // Chat
@@ -78,16 +100,16 @@ class _HomeScreenState extends State<HomeScreen> {
             label: context.tr('nav_learn'),
           ),
           
-          // Swirls (renamed from Videos)
+          // Swirls
           NavigationDestination(
-            icon: const Icon(Icons.video_library_outlined),  // ✅ Updated icon
+            icon: const Icon(Icons.video_library_outlined),
             selectedIcon: const Icon(Icons.video_library),
-            label: context.tr('nav_swirls'),  // ✅ Updated translation key
+            label: context.tr('nav_swirls'),
           ),
           
           // Shop
           NavigationDestination(
-            icon: const Icon(Icons.shopping_bag_outlined),  // ✅ Better icon
+            icon: const Icon(Icons.shopping_bag_outlined),
             selectedIcon: const Icon(Icons.shopping_bag),
             label: context.tr('nav_shop'),
           ),
@@ -99,14 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
             label: context.tr('nav_sports'),
           ),
           
-          // ✅ REMOVED: Games navigation
-          // ✅ REMOVED: Profile navigation (moved to hamburger)
-          
-          // ✅ ADDED: Hamburger Menu (More)
+          // Hamburger Menu (More)
           NavigationDestination(
             icon: const Icon(Icons.menu),
             selectedIcon: const Icon(Icons.menu_open),
-            label: context.tr('more'),  // "More" or "Mai mult"
+            label: context.tr('more'),
           ),
         ],
       ),
@@ -123,5 +142,3 @@ class ShopScreen extends StatelessWidget {
     return const ProductsListScreen();
   }
 }
-
-// ✅ REMOVED: ProfileScreenTab (acum în hamburger menu)

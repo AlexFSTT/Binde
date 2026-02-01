@@ -1,5 +1,5 @@
-/// Model pentru un Swirl (video scurt TikTok-style) din secțiunea Swirls
-/// Durata: minim 10 secunde, maxim 10 minute
+/// Model pentru un Swirl (video scurt TikTok-style)
+/// Diferă de Video prin adăugarea de informații despre creator și validare durata
 class Swirl {
   final String id;
   final String title;
@@ -7,11 +7,16 @@ class Swirl {
   final String videoUrl;
   final String? thumbnailUrl;
   final String? category;
-  final int durationSeconds; // Validare: 10-600 secunde
+  final int durationSeconds;
   final int viewsCount;
   final int likesCount;
   final bool isPublished;
   final DateTime createdAt;
+  
+  // User info (creator-ul Swirl-ului) - NULLABLE pentru compatibilitate database
+  final String userId;        // Default: '' dacă lipsește
+  final String username;      // Default: 'Unknown' dacă lipsește
+  final String? userAvatar;   // Opțional
 
   Swirl({
     required this.id,
@@ -25,19 +30,16 @@ class Swirl {
     this.likesCount = 0,
     this.isPublished = true,
     required this.createdAt,
+    this.userId = '',           // Default empty
+    this.username = 'Unknown',  // Default Unknown
+    this.userAvatar,
   });
 
-  /// Validează durata video-ului pentru Swirls
-  /// Minim: 10 secunde, Maxim: 10 minute (600 secunde)
-  bool get isValidDuration {
-    return durationSeconds >= 10 && durationSeconds <= 600;
-  }
-
-  /// Creează un Swirl din JSON
+  /// Creează un Swirl din JSON - cu protecție pentru câmpuri NULL
   factory Swirl.fromJson(Map<String, dynamic> json) {
     return Swirl(
       id: json['id'] as String,
-      title: json['title'] as String,
+      title: json['title'] as String? ?? '',
       description: json['description'] as String?,
       videoUrl: json['video_url'] as String,
       thumbnailUrl: json['thumbnail_url'] as String?,
@@ -47,6 +49,11 @@ class Swirl {
       likesCount: json['likes_count'] as int? ?? 0,
       isPublished: json['is_published'] as bool? ?? true,
       createdAt: DateTime.parse(json['created_at'] as String),
+      
+      // ✅ FIX: Câmpuri user cu fallback pentru NULL values
+      userId: json['user_id'] as String? ?? '',
+      username: json['username'] as String? ?? 'Unknown',
+      userAvatar: json['user_avatar'] as String?,
     );
   }
 
@@ -63,6 +70,10 @@ class Swirl {
       'views_count': viewsCount,
       'likes_count': likesCount,
       'is_published': isPublished,
+      'created_at': createdAt.toIso8601String(),
+      'user_id': userId.isEmpty ? null : userId,
+      'username': username == 'Unknown' ? null : username,
+      'user_avatar': userAvatar,
     };
   }
 
@@ -91,5 +102,20 @@ class Swirl {
       return '${(likesCount / 1000).toStringAsFixed(1)}K';
     }
     return likesCount.toString();
+  }
+
+  /// Validare: Swirls trebuie să fie între 10 secunde și 10 minute (600 secunde)
+  bool get isValidDuration {
+    return durationSeconds >= 10 && durationSeconds <= 600;
+  }
+
+  /// Mesaj de eroare pentru durată invalidă
+  String get durationErrorMessage {
+    if (durationSeconds < 10) {
+      return 'Swirl too short! Minimum duration is 10 seconds.';
+    } else if (durationSeconds > 600) {
+      return 'Swirl too long! Maximum duration is 10 minutes.';
+    }
+    return 'Invalid duration';
   }
 }

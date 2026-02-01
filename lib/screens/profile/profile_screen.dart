@@ -45,6 +45,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final fullName = _profile?['full_name'] ?? 
                      user?.userMetadata?['full_name'] ?? 
                      'Utilizator';
+    final username = _profile?['username']; // ✅ ADĂUGAT
     final bio = _profile?['bio'];
     final avatarUrl = _profile?['avatar_url'];
     final email = user?.email ?? '';
@@ -90,6 +91,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
+
+                    // ✅ USERNAME (NOU!)
+                    if (username != null && username.toString().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '@${username.toString()}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 4),
 

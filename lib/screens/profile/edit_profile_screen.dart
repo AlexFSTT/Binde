@@ -17,6 +17,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _imagePicker = ImagePicker();
 
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController(); // ✅ ADĂUGAT
   final _bioController = TextEditingController();
 
   bool _isLoading = true;
@@ -33,6 +34,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _usernameController.dispose(); // ✅ ADĂUGAT
     _bioController.dispose();
     super.dispose();
   }
@@ -44,6 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (profile != null) {
       _nameController.text = profile['full_name'] ?? '';
+      _usernameController.text = profile['username'] ?? ''; // ✅ ADĂUGAT
       _bioController.text = profile['bio'] ?? '';
       _avatarUrl = profile['avatar_url'];
     } else {
@@ -55,7 +58,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    // Arată dialog pentru a alege sursa
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (context) => SafeArea(
@@ -83,7 +85,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
 
     if (source == null && _avatarUrl != null) {
-      // Utilizatorul vrea să șteargă avatarul
       await _deleteAvatar();
       return;
     }
@@ -166,8 +167,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _isSaving = true);
 
+    // ✅ ACTUALIZAT: Include username
     final result = await _profileService.updateProfile(
       fullName: _nameController.text.trim(),
+      username: _usernameController.text.trim(), // ✅ ADĂUGAT
       bio: _bioController.text.trim(),
     );
 
@@ -219,7 +222,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Center(
                       child: Stack(
                         children: [
-                          // Avatar image
                           _isUploadingAvatar
                               ? CircleAvatar(
                                   radius: 60,
@@ -243,7 +245,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         )
                                       : null,
                                 ),
-                          // Camera button
                           Positioned(
                             bottom: 0,
                             right: 0,
@@ -268,7 +269,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                     const SizedBox(height: 8),
 
-                    // Hint text
                     Text(
                       'Apasă pe cameră pentru a schimba',
                       style: TextStyle(
@@ -278,6 +278,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // ✅ USERNAME FIELD (NOU!)
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        hintText: 'Alege un username unic',
+                        prefixText: '@',
+                        prefixIcon: const Icon(Icons.alternate_email),
+                        helperText: 'Acest username va apărea în Swirls',
+                        helperMaxLines: 2,
+                      ),
+                      maxLength: 30,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Username-ul este obligatoriu';
+                        }
+                        if (value.trim().length < 3) {
+                          return 'Username-ul trebuie să aibă cel puțin 3 caractere';
+                        }
+                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                          return 'Username-ul poate conține doar litere, cifre și _';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
 
                     // Nume
                     TextFormField(

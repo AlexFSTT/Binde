@@ -1,58 +1,69 @@
 import 'package:flutter/material.dart';
 
-/// Tema aplicației Binde - Light și Dark mode
+/// Tema aplicației Binde - Chocolate Truffle palette (Figma)
+/// Paleta elegantă: Dark Brown, Caramel, Cream
 class AppTheme {
-  // Culori principale
-  static const Color primaryColor = Color(0xFF6366F1);      // Indigo
-  static const Color secondaryColor = Color(0xFF8B5CF6);    // Purple
-  static const Color accentColor = Color(0xFF06B6D4);       // Cyan
+  // 🍫 CHOCOLATE TRUFFLE PALETTE - Figma
+  // Culori principale inspirate din paleta Chocolate Truffle
+  static const Color darkBrown = Color(0xFF3E2723);        // Dark chocolate brown
+  static const Color mediumBrown = Color(0xFF6D4C41);      // Medium chocolate
+  static const Color caramel = Color(0xFFA1887F);          // Warm caramel
+  static const Color lightCaramel = Color(0xFFBCAAA4);     // Light caramel
+  static const Color cream = Color(0xFFF5E6D3);            // Soft cream
+  static const Color warmWhite = Color(0xFFFFFBF0);        // Warm white
+  
+  // Accent culori complementare
+  static const Color accentGold = Color(0xFFD4A574);       // Warm gold accent
+  static const Color deepBrown = Color(0xFF2C1810);        // Very dark brown
   
   // Culori pentru Light Theme
-  static const Color lightBackground = Color(0xFFF8FAFC);
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightText = Color(0xFF1E293B);
-  static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color lightBackground = warmWhite;
+  static const Color lightSurface = cream;
+  static const Color lightText = darkBrown;
+  static const Color lightTextSecondary = mediumBrown;
   
   // Culori pentru Dark Theme
-  static const Color darkBackground = Color(0xFF0F172A);
-  static const Color darkSurface = Color(0xFF1E293B);
-  static const Color darkText = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkBackground = Color(0xFF1A1410);   // Very dark chocolate
+  static const Color darkSurface = Color(0xFF2C1F1A);      // Dark surface
+  static const Color darkText = cream;
+  static const Color darkTextSecondary = lightCaramel;
   
-  // Light Theme
+  // Light Theme - Chocolate Truffle
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    primaryColor: primaryColor,
+    primaryColor: mediumBrown,
     scaffoldBackgroundColor: lightBackground,
     
     colorScheme: const ColorScheme.light(
-      primary: primaryColor,
-      secondary: secondaryColor,
-      tertiary: accentColor,
-      surface: lightSurface,
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
-      onSurface: lightText,
+      primary: mediumBrown,              // Medium brown pentru acțiuni principale
+      secondary: caramel,                // Caramel pentru secondary actions
+      tertiary: accentGold,              // Gold pentru accente
+      surface: lightSurface,             // Cream pentru surfaces
+      onPrimary: warmWhite,              // Text pe primary
+      onSecondary: darkBrown,            // Text pe secondary
+      onSurface: lightText,              // Dark brown pe surfaces
+      primaryContainer: lightCaramel,    // Light caramel pentru containers
+      secondaryContainer: cream,         // Cream pentru secondary containers
     ),
     
     appBarTheme: const AppBarTheme(
-      backgroundColor: lightSurface,
-      foregroundColor: lightText,
+      backgroundColor: cream,
+      foregroundColor: darkBrown,
       elevation: 0,
       centerTitle: true,
     ),
     
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: lightSurface,
-      selectedItemColor: primaryColor,
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: cream,
+      selectedItemColor: mediumBrown,
       unselectedItemColor: lightTextSecondary,
       type: BottomNavigationBarType.fixed,
       elevation: 8,
     ),
     
     cardTheme: CardThemeData(
-      color: lightSurface,
+      color: cream,
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -61,26 +72,26 @@ class AppTheme {
     
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: lightSurface,
+      fillColor: warmWhite,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: lightCaramel),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: lightCaramel),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+        borderSide: const BorderSide(color: mediumBrown, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: mediumBrown,
+        foregroundColor: warmWhite,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -91,38 +102,40 @@ class AppTheme {
     
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: primaryColor,
+        foregroundColor: mediumBrown,
       ),
     ),
   );
   
-  // Dark Theme
+  // Dark Theme - Chocolate Truffle
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    primaryColor: primaryColor,
+    primaryColor: caramel,
     scaffoldBackgroundColor: darkBackground,
     
     colorScheme: const ColorScheme.dark(
-      primary: primaryColor,
-      secondary: secondaryColor,
-      tertiary: accentColor,
-      surface: darkSurface,
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
-      onSurface: darkText,
+      primary: caramel,                  // Caramel pentru acțiuni principale (mai vizibil în dark)
+      secondary: accentGold,             // Gold pentru secondary
+      tertiary: lightCaramel,            // Light caramel pentru accente
+      surface: darkSurface,              // Dark brown pentru surfaces
+      onPrimary: deepBrown,              // Very dark text pe primary
+      onSecondary: deepBrown,            // Very dark text pe secondary
+      onSurface: darkText,               // Cream pe surfaces
+      primaryContainer: mediumBrown,     // Medium brown pentru containers
+      secondaryContainer: Color(0xFF3E2A23), // Slightly lighter dark
     ),
     
     appBarTheme: const AppBarTheme(
       backgroundColor: darkSurface,
-      foregroundColor: darkText,
+      foregroundColor: cream,
       elevation: 0,
       centerTitle: true,
     ),
     
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: darkSurface,
-      selectedItemColor: primaryColor,
+      selectedItemColor: accentGold,      // Gold pentru selected (mai vizibil)
       unselectedItemColor: darkTextSecondary,
       type: BottomNavigationBarType.fixed,
       elevation: 8,
@@ -138,26 +151,26 @@ class AppTheme {
     
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: darkSurface,
+      fillColor: const Color(0xFF3E2A23),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.white24),
+        borderSide: const BorderSide(color: Color(0xFF4A3429)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.white24),
+        borderSide: const BorderSide(color: Color(0xFF4A3429)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+        borderSide: const BorderSide(color: caramel, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: caramel,
+        foregroundColor: deepBrown,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -168,7 +181,7 @@ class AppTheme {
     
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: primaryColor,
+        foregroundColor: accentGold,
       ),
     ),
   );

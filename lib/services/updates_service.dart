@@ -44,7 +44,7 @@ class UpdatesService {
           .eq('id', id)
           .single();
 
-      return AppUpdate.fromJson(response as Map<String, dynamic>);
+      return AppUpdate.fromJson(response);
     } catch (e) {
       throw Exception('Failed to load update: $e');
     }

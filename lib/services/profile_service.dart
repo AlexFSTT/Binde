@@ -28,6 +28,7 @@ class ProfileService {
     String? fullName,
     String? bio,
     String? avatarUrl,
+    required String username, // ✅ Parametru obligatoriu
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -36,6 +37,8 @@ class ProfileService {
       }
 
       final updates = <String, dynamic>{
+        'id': userId, // ✅ ADĂUGAT pentru upsert
+        'username': username, // ✅ ADĂUGAT - ACESTA ERA PROBLEMA!
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -43,10 +46,10 @@ class ProfileService {
       if (bio != null) updates['bio'] = bio;
       if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
 
+      // ✅ SCHIMBAT de la .update() la .upsert() pentru consistență
       await _supabase
           .from('profiles')
-          .update(updates)
-          .eq('id', userId);
+          .upsert(updates);
 
       // Actualizează și metadata din auth dacă s-a schimbat numele
       if (fullName != null) {
@@ -57,6 +60,13 @@ class ProfileService {
 
       return ProfileResult.success('Profil actualizat cu succes!');
     } catch (e) {
+      // ✅ ADĂUGAT: Error handling pentru username duplicat
+      if (e.toString().contains('duplicate key') || 
+          e.toString().contains('unique constraint') ||
+          e.toString().contains('profiles_username_key')) {
+        return ProfileResult.error('Username-ul este deja folosit. Alege altul.');
+      }
+      
       return ProfileResult.error('Eroare la actualizare: $e');
     }
   }

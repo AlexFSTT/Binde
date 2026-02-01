@@ -273,7 +273,7 @@ class _HamburgerMenuState extends State<HamburgerMenu>
           
           // Version (nu se traduce)
           Text(
-            'Binde v1.0.0',
+            'Binde v0.2.1',
             style: TextStyle(
               fontSize: 10,
               color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -310,7 +310,7 @@ class _HamburgerMenuState extends State<HamburgerMenu>
             ),
             const SizedBox(height: 12),
             Text(
-              '${context.tr('version')}: 1.0.0', // ✅ TRADUS
+              '${context.tr('version')}: v0.2.1', // ✅ TRADUS
               style: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
