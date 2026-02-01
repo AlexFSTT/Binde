@@ -146,8 +146,8 @@ class SwirlsFeedScreenState extends State<SwirlsFeedScreen>
         onPressed: _openUploadScreen,
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
         tooltip: 'Upload Swirl',
+        child: const Icon(Icons.add),
       ),
     );
   }
