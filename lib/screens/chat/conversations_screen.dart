@@ -166,6 +166,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       ),
       body: _buildBody(colorScheme),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'conversations_fab',
         onPressed: _openUserSelector,
         child: const Icon(Icons.edit),
       ),
@@ -295,7 +296,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               // Numele + badge necitite
                               Row(
@@ -328,7 +329,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                         unreadCount > 99 ? '99+' : '$unreadCount',
                                         style: TextStyle(
                                           color: colorScheme.onPrimary,
-                                          fontSize: 12,
+                                          fontSize: 10, // ✅ Redus de la 12 la 11
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -391,7 +392,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               left: 0,
               top: 7, // ✅ Centrat vertical (66-52)/2 = 7
               child: Hero(
-                tag: 'avatar_${conversation.id}',
+                tag: 'conversation_avatar_${conversation.id}',
                 child: Container(
                   width: 52, // ✅ Redus de la 64 la 52
                   height: 52, // ✅ Redus de la 64 la 52

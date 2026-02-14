@@ -128,18 +128,6 @@ const Map<String, String> ro = {
   'error_connection': 'Eroare de conexiune',
   'try_again': 'Încearcă din nou',
 
-
-
-  // Swirls
-'swirls': 'Swirls',
-'swirl': 'Swirl',
-'no_swirls': 'Nu există swirls disponibile',
-'swirl_too_short': 'Swirl prea scurt! Minim 10 secunde.',
-'swirl_too_long': 'Swirl prea lung! Maxim 10 minute.',
-'loading_swirl': 'Se încarcă swirl...',
-'swirls_feed': 'Feed Swirls',
-'nav_swirls': 'Swirls',
-
 // Updates
 'updates': 'Actualizări',
 'app_updates': 'Actualizări Aplicație',

@@ -119,7 +119,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
           const SizedBox(height: 32),
           // Avatar mare
           Hero(
-            tag: 'avatar_${widget.userId}',
+            tag: 'profile_avatar_${widget.userId}',
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,

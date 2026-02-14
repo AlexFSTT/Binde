@@ -6,11 +6,11 @@ class AppConstants {
   static const String appName = 'Binde';
   
   // Versiunea aplicației
-  static const String appVersion = '0.2.1';
+  static const String appVersion = '0.2.2';
   
   // Supabase - vom completa după ce creăm proiectul Supabase
   static const String supabaseUrl = 'https://uwxnknwnpocclqvpcstp.supabase.co';
-  static const String supabaseAnonKey = 'sb_publishable_QDdAybH97oZRDZR_6NdHGA_StHUOR5w';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3eG5rbnducG9jY2xxdnBjc3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTAwMjQsImV4cCI6MjA4NDQyNjAyNH0.-yW2tMW_K4RD_YxG9NoaphnWaOqQ4CmabLu_UnNiFBs';
   
   // Dimensiuni standard
   static const double paddingSmall = 8.0;

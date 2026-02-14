@@ -128,16 +128,6 @@ const Map<String, String> en = {
   'error_connection': 'Connection error',
   'try_again': 'Try again',
 
-  // Swirls (renamed from Videos)
-'swirls': 'Swirls',
-'swirl': 'Swirl',
-'no_swirls': 'No swirls available',
-'swirl_too_short': 'Swirl too short! Minimum 10 seconds.',
-'swirl_too_long': 'Swirl too long! Maximum 10 minutes.',
-'loading_swirl': 'Loading swirl...',
-'swirls_feed': 'Swirls Feed',
-'nav_swirls': 'Swirls',
-
 // Updates
 'updates': 'Updates',
 'app_updates': 'App Updates',

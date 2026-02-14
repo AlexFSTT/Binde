@@ -3,7 +3,6 @@ import '../../l10n/app_localizations.dart';
 import '../../widgets/common/hamburger_menu.dart';
 import '../chat/conversations_screen.dart';
 import '../learn/lessons_list_screen.dart';
-import '../swirls/swirls_feed_screen.dart';
 import '../shop/products_list_screen.dart';
 import '../sports/sports_screen.dart';
 
@@ -17,52 +16,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   
-  // ✅ GlobalKey pentru Swirls feed
-  final GlobalKey<SwirlsFeedScreenState> _swirlsFeedKey = GlobalKey<SwirlsFeedScreenState>();
-  
   // GlobalKey pentru drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ✅ UPDATED: Folosim GlobalKey pentru SwirlsFeedScreen
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     
-    // Inițializăm screens cu GlobalKey pentru Swirls
+    // Inițializăm screens
     _screens = [
       const ConversationsScreen(),     // 0 - Chat
       const LessonsListScreen(),       // 1 - Learn
-      SwirlsFeedScreen(key: _swirlsFeedKey), // ✅ 2 - Swirls (cu GlobalKey!)
-      const ShopScreen(),              // 3 - Shop
-      const SportsScreen(),            // 4 - Sports
+      const ShopScreen(),              // 2 - Shop
+      const SportsScreen(),            // 3 - Sports
     ];
   }
 
   void _onNavigationTap(int index) {
-    if (index == 5) {
-      // Hamburger menu - deschide drawer
+    if (index == 4) {
+      // Hamburger menu - deschide drawer (index 4 acum, era 5)
       _scaffoldKey.currentState?.openDrawer();
     } else {
-      // ✅ DETECTARE SCHIMBARE TAB pentru Swirls
-      final oldIndex = _currentIndex;
-      const swirlsIndex = 2; // Swirls e pe index 2
-      
-      // Detectează când INTRI în Swirls
-      if (index == swirlsIndex && oldIndex != swirlsIndex) {
-        // INTRAT în Swirls → pornește video
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _swirlsFeedKey.currentState?.onTabVisible();
-        });
-      }
-      
-      // Detectează când IEȘI din Swirls
-      if (oldIndex == swirlsIndex && index != swirlsIndex) {
-        // IEȘIT din Swirls → oprește video
-        _swirlsFeedKey.currentState?.onTabHidden();
-      }
-      
       setState(() {
         _currentIndex = index;
       });
@@ -98,13 +74,6 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.school_outlined),
             selectedIcon: const Icon(Icons.school),
             label: context.tr('nav_learn'),
-          ),
-          
-          // Swirls
-          NavigationDestination(
-            icon: const Icon(Icons.video_library_outlined),
-            selectedIcon: const Icon(Icons.video_library),
-            label: context.tr('nav_swirls'),
           ),
           
           // Shop

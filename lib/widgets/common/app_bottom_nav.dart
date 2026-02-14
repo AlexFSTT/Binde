@@ -40,13 +40,6 @@ class AppBottomNav extends StatelessWidget {
           label: 'Learn',
         ),
         
-        // Swirls (renamed from Videos)
-        BottomNavigationBarItem(
-          icon: Icon(Icons.video_library_outlined),
-          activeIcon: Icon(Icons.video_library),
-          label: 'Swirls',
-        ),
-        
         // Shop
         BottomNavigationBarItem(
           icon: Icon(Icons.shopping_bag_outlined),

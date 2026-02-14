@@ -307,7 +307,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Hero(
-                tag: 'avatar_${widget.conversation.getOtherParticipantId(_supabase.auth.currentUser!.id)}',
+                tag: 'chat_avatar_${widget.conversation.getOtherParticipantId(_supabase.auth.currentUser!.id)}',
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: colorScheme.primaryContainer,
