@@ -12,6 +12,7 @@ import 'chat_detail_screen.dart';
 import '../friends/friend_search_screen.dart';
 
 /// Ecran pentru lista de conversații
+/// ✅ REALTIME: Badge-ul roșu se actualizează automat când primești friend request
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
@@ -133,14 +134,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       MaterialPageRoute(
         builder: (context) => ChatDetailScreen(
           conversation: conversation,
-          onMessageSent: () {
-            _loadConversations();
-          },
+          onMessageSent: _loadConversations,
         ),
       ),
-    ).then((_) {
-      _loadConversations();
-    });
+    ).then((_) => _loadConversations());
   }
 
   void _openUserSelector() {
@@ -149,38 +146,34 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       MaterialPageRoute(
         builder: (context) => const FriendSearchScreen(),
       ),
-    ).then((_) {
-      _loadConversations();
-    });
+    ).then((_) => _loadConversations());
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    // ✅ Badge doar pentru CHAT notifications (friend requests)
+    
+    // ✅ REALTIME BADGE: ref.watch() înseamnă că widget-ul se re-construiește
+    // automat când provider-ul emite o valoare nouă (când primești notificare)
     final hasChatNotifications = ref.watch(hasChatUnreadNotificationsProvider);
 
     return Scaffold(
       key: _scaffoldKey,
-      // ✅ Friends drawer
       drawer: FriendsDrawer(
         onChatOpened: _loadConversations,
       ),
       appBar: AppBar(
-        // ✅ Friends icon la stânga
         leading: IconButton(
           icon: const Icon(Icons.people_outline),
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer();
-          },
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           tooltip: 'Friends',
         ),
         title: Text(context.tr('nav_chat')),
         actions: [
-          // Notification bell - doar friend requests
+          // ✅ REALTIME BADGE: Se actualizează automat când hasChatNotifications se schimbă
           IconButton(
             icon: NotificationBadge(
-              showBadge: hasChatNotifications,
+              showBadge: hasChatNotifications, // 🔴 Bulină roșie când există notificări
               child: const Icon(Icons.notifications_outlined),
             ),
             onPressed: () {
@@ -192,7 +185,6 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
               );
             },
           ),
-          // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadConversations,
@@ -211,9 +203,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
 
   Widget _buildBody(ColorScheme colorScheme) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
@@ -228,22 +218,14 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              context.tr('error_loading'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+              'Error: $_error',
               textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.error),
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+            ElevatedButton(
               onPressed: _loadConversations,
-              icon: const Icon(Icons.refresh),
-              label: Text(context.tr('retry')),
+              child: const Text('Retry'),
             ),
           ],
         ),

@@ -9,6 +9,8 @@ import '../learn/lessons_list_screen.dart';
 import '../shop/products_list_screen.dart';
 import '../sports/sports_screen.dart';
 
+/// Home screen cu bottom navigation
+/// ✅ REALTIME: Badge-urile pe tab-uri se actualizează automat când primești notificări
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -37,6 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onNavigationTap(int index) {
     if (index == 4) {
+      // Hamburger menu
       _scaffoldKey.currentState?.openDrawer();
     } else {
       setState(() {
@@ -47,29 +50,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Badge-uri separate pe categorii
+    // ✅ REALTIME BADGES: ref.watch() face ca widget-ul să se re-construiască
+    // automat când provider-ul emite o nouă valoare (când primești notificare)
     final hasChatNotifications = ref.watch(hasChatUnreadNotificationsProvider);
     final hasLearnNotifications = ref.watch(hasLearnUnreadNotificationsProvider);
 
     return Scaffold(
       key: _scaffoldKey,
-      
       drawer: const HamburgerMenu(),
-      
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-      
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: _onNavigationTap,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
-          // Chat - badge pentru friend requests
+          // ✅ Chat - Badge pentru friend requests (actualizare în timp real)
           NavigationDestination(
             icon: NotificationBadge(
-              showBadge: hasChatNotifications,
+              showBadge: hasChatNotifications, // 🔴 Bulină roșie când există notificări
               child: const Icon(Icons.chat_bubble_outline),
             ),
             selectedIcon: NotificationBadge(
@@ -79,10 +80,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: context.tr('nav_chat'),
           ),
           
-          // Learn - badge pentru learn updates
+          // ✅ Learn - Badge pentru learn updates (actualizare în timp real)
           NavigationDestination(
             icon: NotificationBadge(
-              showBadge: hasLearnNotifications,
+              showBadge: hasLearnNotifications, // 🔴 Bulină roșu când există notificări
               child: const Icon(Icons.school_outlined),
             ),
             selectedIcon: NotificationBadge(

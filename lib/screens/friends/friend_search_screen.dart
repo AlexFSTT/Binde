@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ ADDED
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/friendship_model.dart';
 import '../../services/friendship_service.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Ecran split pentru căutare useri + pending friend requests
+/// ✅ REALTIME: Lista de pending se actualizează automat când cineva acceptă/refuză cererea
 class FriendSearchScreen extends StatefulWidget {
   const FriendSearchScreen({super.key});
 
@@ -15,9 +16,9 @@ class FriendSearchScreen extends StatefulWidget {
 class _FriendSearchScreenState extends State<FriendSearchScreen> {
   final FriendshipService _friendshipService = FriendshipService();
   final TextEditingController _searchController = TextEditingController();
-
-  // ✅ ADDED: supabase + channel pentru realtime
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  // ✅ REALTIME: Channel pentru schimbări în friendships
   RealtimeChannel? _friendshipsChannel;
 
   List<Map<String, dynamic>> _searchResults = [];
@@ -29,34 +30,33 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
   void initState() {
     super.initState();
     _loadPendingRequests();
-    _subscribeFriendshipsRealtime(); // ✅ ADDED
+    _subscribeFriendshipsRealtime(); // ✅ Pornește ascultarea în timp real
   }
 
   @override
   void dispose() {
-    _friendshipsChannel?.unsubscribe(); // ✅ ADDED
+    _friendshipsChannel?.unsubscribe(); // ✅ Cleanup subscription
     _searchController.dispose();
     super.dispose();
   }
 
-  // ✅ ADDED: realtime subscription pentru refresh instant
+  /// ✅ REALTIME: Subscription la tabelul friendships
+  /// Ascultă când cineva acceptă/refuză/șterge un friend request
   void _subscribeFriendshipsRealtime() {
     final uid = _supabase.auth.currentUser?.id;
     if (uid == null) return;
 
-    // dacă există deja, cleanup
+    // Cleanup dacă există deja
     _friendshipsChannel?.unsubscribe();
 
-    // IMPORTANT:
-    // - stream() din supabase_flutter e ok, dar aici vrem să reacționăm la orice event rapid
-    // - ascultăm pe rânduri unde userul e sender sau receiver
+    // Subscribe la schimbări în friendships unde user-ul e sender SAU receiver
     _friendshipsChannel = _supabase
         .channel('friendships-changes-$uid')
+        // Ascultă când user-ul e sender (a trimis cererea)
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'friendships',
-          // ✅ ADDED: folosim filter tip PostgresChangeFilter (compatibil cu supabase_flutter 2.x)
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'sender_id',
@@ -64,11 +64,11 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
           ),
           callback: (_) => _onFriendshipsChanged(),
         )
+        // Ascultă când user-ul e receiver (a primit cererea)
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'friendships',
-          // ✅ ADDED: și pentru receiver_id = uid
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'receiver_id',
@@ -79,17 +79,19 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         .subscribe();
   }
 
-  // ✅ ADDED: handler comun
+  /// ✅ REALTIME: Handler pentru schimbări
+  /// Se apelează automat când se schimbă ceva în friendships
   void _onFriendshipsChanged() {
     if (!mounted) return;
 
-    // refresh pending imediat
+    // Refresh lista de pending instant
     _loadPendingRequests();
 
-    // refresh search results dacă userul caută deja (ca să dispară cei care devin pending/accepted)
-    final q = _searchController.text.trim();
-    if (q.isNotEmpty) {
-      _searchUsers(q);
+    // Refresh search results dacă user-ul caută
+    // (ca să dispară userii care au devenit pending/accepted)
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      _searchUsers(query);
     }
   }
 
@@ -208,7 +210,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
-  /// Search results section
   Widget _buildSearchSection(ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +261,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
-  /// Pending requests section
   Widget _buildPendingSection(ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
