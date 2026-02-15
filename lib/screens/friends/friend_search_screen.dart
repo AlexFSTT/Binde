@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ ADDED
 import '../../models/friendship_model.dart';
 import '../../services/friendship_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -14,7 +15,11 @@ class FriendSearchScreen extends StatefulWidget {
 class _FriendSearchScreenState extends State<FriendSearchScreen> {
   final FriendshipService _friendshipService = FriendshipService();
   final TextEditingController _searchController = TextEditingController();
-  
+
+  // ✅ ADDED: supabase + channel pentru realtime
+  final SupabaseClient _supabase = Supabase.instance.client;
+  RealtimeChannel? _friendshipsChannel;
+
   List<Map<String, dynamic>> _searchResults = [];
   List<FriendshipModel> _pendingRequests = [];
   bool _isSearching = false;
@@ -24,19 +29,75 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
   void initState() {
     super.initState();
     _loadPendingRequests();
+    _subscribeFriendshipsRealtime(); // ✅ ADDED
   }
 
   @override
   void dispose() {
+    _friendshipsChannel?.unsubscribe(); // ✅ ADDED
     _searchController.dispose();
     super.dispose();
   }
 
+  // ✅ ADDED: realtime subscription pentru refresh instant
+  void _subscribeFriendshipsRealtime() {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return;
+
+    // dacă există deja, cleanup
+    _friendshipsChannel?.unsubscribe();
+
+    // IMPORTANT:
+    // - stream() din supabase_flutter e ok, dar aici vrem să reacționăm la orice event rapid
+    // - ascultăm pe rânduri unde userul e sender sau receiver
+    _friendshipsChannel = _supabase
+        .channel('friendships-changes-$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'friendships',
+          // ✅ ADDED: folosim filter tip PostgresChangeFilter (compatibil cu supabase_flutter 2.x)
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'sender_id',
+            value: uid,
+          ),
+          callback: (_) => _onFriendshipsChanged(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'friendships',
+          // ✅ ADDED: și pentru receiver_id = uid
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'receiver_id',
+            value: uid,
+          ),
+          callback: (_) => _onFriendshipsChanged(),
+        )
+        .subscribe();
+  }
+
+  // ✅ ADDED: handler comun
+  void _onFriendshipsChanged() {
+    if (!mounted) return;
+
+    // refresh pending imediat
+    _loadPendingRequests();
+
+    // refresh search results dacă userul caută deja (ca să dispară cei care devin pending/accepted)
+    final q = _searchController.text.trim();
+    if (q.isNotEmpty) {
+      _searchUsers(q);
+    }
+  }
+
   Future<void> _loadPendingRequests() async {
     setState(() => _isLoadingPending = true);
-    
+
     final requests = await _friendshipService.getSentFriendRequests();
-    
+
     if (mounted) {
       setState(() {
         _pendingRequests = requests;
@@ -65,14 +126,14 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
 
   Future<void> _sendFriendRequest(String userId, String userName) async {
     final success = await _friendshipService.sendFriendRequest(userId);
-    
+
     if (!mounted) return;
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${context.tr('friend_request_sent_to')} $userName')),
       );
-      
+
       // Refresh lists
       _searchUsers(_searchController.text);
       _loadPendingRequests();
@@ -85,7 +146,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
 
   Future<void> _cancelRequest(String friendshipId) async {
     final success = await _friendshipService.cancelFriendRequest(friendshipId);
-    
+
     if (!mounted) return;
 
     if (success) {
@@ -135,22 +196,13 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       ),
       body: Column(
         children: [
-          // Top Half - Search Results
-          Expanded(
-            child: _buildSearchSection(colorScheme),
-          ),
-          
-          // Divider
+          Expanded(child: _buildSearchSection(colorScheme)),
           Divider(
             height: 1,
             thickness: 2,
             color: colorScheme.outlineVariant,
           ),
-          
-          // Bottom Half - Pending Requests
-          Expanded(
-            child: _buildPendingSection(colorScheme),
-          ),
+          Expanded(child: _buildPendingSection(colorScheme)),
         ],
       ),
     );
@@ -161,7 +213,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
@@ -171,8 +222,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
             ),
           ),
         ),
-        
-        // Content
         Expanded(
           child: _isSearching
               ? const Center(child: CircularProgressIndicator())
@@ -216,7 +265,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -248,8 +296,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
             ],
           ),
         ),
-        
-        // Content
         Expanded(
           child: _isLoadingPending
               ? const Center(child: CircularProgressIndicator())
@@ -286,7 +332,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
-  /// User search result card
   Widget _buildUserCard(Map<String, dynamic> user, ColorScheme colorScheme) {
     final userId = user['id'] as String;
     final fullName = user['full_name'] as String?;
@@ -324,7 +369,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
-  /// Pending request card
   Widget _buildPendingCard(FriendshipModel request, ColorScheme colorScheme) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
