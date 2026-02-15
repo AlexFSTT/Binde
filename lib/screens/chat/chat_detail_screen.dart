@@ -420,10 +420,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             Icon(Icons.chat_outlined, size: 80,
                 color: colorScheme.primary.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
-            Text(context.tr('no_messages'),
+            Text(context.tr('No messages yet'),
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text(context.tr('say_hi'),
+            Text(context.tr('Start the conversation by sending a message!'),
                 style: TextStyle(
                     color: colorScheme.onSurface.withValues(alpha: 0.6))),
           ],
