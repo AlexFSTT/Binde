@@ -24,14 +24,16 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  late final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  late final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   late final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   late final SupabaseClient _supabase = Supabase.instance.client;
 
   // Stream pentru notificări noi
-  late final StreamController<NotificationModel> _notificationStreamController = 
+  late final StreamController<NotificationModel> _notificationStreamController =
       StreamController<NotificationModel>.broadcast();
-  Stream<NotificationModel> get notificationStream => _notificationStreamController.stream;
+  Stream<NotificationModel> get notificationStream =>
+      _notificationStreamController.stream;
 
   bool _initialized = false;
 
@@ -88,7 +90,8 @@ class NotificationService {
 
   /// Configurare local notifications cu canale separate
   Future<void> _configureLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -100,8 +103,9 @@ class NotificationService {
       iOS: iosSettings,
     );
 
+    // ✅ flutter_local_notifications v20+ cere parametru named `settings:`
     await _localNotifications.initialize(
-      initSettings,
+      settings: initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
@@ -142,15 +146,18 @@ class NotificationService {
     );
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(chatChannel);
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(sportsChannel);
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(learnChannel);
   }
 
@@ -173,7 +180,8 @@ class NotificationService {
     // Terminated tap
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint('📱 Notification tapped (terminated): ${initialMessage.data}');
+      debugPrint(
+          '📱 Notification tapped (terminated): ${initialMessage.data}');
       _handleNotificationTap(initialMessage.data);
     }
   }
@@ -218,7 +226,7 @@ class NotificationService {
         .eq('user_id', userId)
         .listen((data) {
           if (data.isEmpty) return;
-          
+
           final notification = NotificationModel.fromJson(data.last);
           _notificationStreamController.add(notification);
           _showInAppNotification(notification);
@@ -235,17 +243,17 @@ class NotificationService {
 
   /// Arată notificare locală din FCM
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    late final type = message.data['type'] as String?;
-    late final category = message.data['category'] as String? ?? 'chat';
-    late final messageText = message.notification?.body ?? '';
+    final type = message.data['type'] as String?;
+    final category = message.data['category'] as String? ?? 'chat';
+    final messageText = message.notification?.body ?? '';
 
     // Determină canalul bazat pe categorie
-    late final channelId = _getChannelId(category);
-    late final channelName = _getChannelName(category);
+    final channelId = _getChannelId(category);
+    final channelName = _getChannelName(category);
 
     // ✅ MESAJE: Notificare expandabilă pentru text lung
     if (type == 'message' || type == 'chat') {
-      late final androidDetails = AndroidNotificationDetails(
+      final androidDetails = AndroidNotificationDetails(
         channelId,
         channelName,
         channelDescription: 'Notifications for $category',
@@ -265,16 +273,16 @@ class NotificationService {
         presentSound: true,
       );
 
-      late final details = NotificationDetails(
+      final details = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       );
 
       await _localNotifications.show(
-        message.hashCode,
-        message.notification?.title,
-        messageText,
-        details,
+        id: message.hashCode,
+        title: message.notification?.title,
+        body: messageText,
+        notificationDetails: details,
         payload: jsonEncode(message.data),
       );
       return;
@@ -282,7 +290,7 @@ class NotificationService {
 
     // ✅ FRIEND REQUESTS: Notificare cu butoane Accept/Decline
     if (type == 'friend_request') {
-      late final androidDetails = AndroidNotificationDetails(
+      final androidDetails = AndroidNotificationDetails(
         channelId,
         channelName,
         channelDescription: 'Notifications for friend requests',
@@ -309,28 +317,31 @@ class NotificationService {
         presentSound: true,
       );
 
-      late final details = NotificationDetails(
+      final details = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       );
 
       await _localNotifications.show(
-        message.hashCode,
-        message.notification?.title,
-        message.notification?.body,
-        details,
+        id: message.hashCode,
+        title: message.notification?.title,
+        body: message.notification?.body,
+        notificationDetails: details,
         payload: jsonEncode(message.data),
       );
       return;
     }
 
     // ✅ SPORTS/LEARN: Notificare standard
-    late final androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       channelId,
       channelName,
       channelDescription: 'Notifications for $category',
-      importance: category == 'sports' ? Importance.high : Importance.defaultImportance,
-      priority: category == 'sports' ? Priority.high : Priority.defaultPriority,
+      importance: category == 'sports'
+          ? Importance.high
+          : Importance.defaultImportance,
+      priority:
+          category == 'sports' ? Priority.high : Priority.defaultPriority,
       showWhen: true,
     );
 
@@ -340,16 +351,16 @@ class NotificationService {
       presentSound: true,
     );
 
-    late final details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
     await _localNotifications.show(
-      message.hashCode,
-      message.notification?.title,
-      message.notification?.body,
-      details,
+      id: message.hashCode,
+      title: message.notification?.title,
+      body: message.notification?.body,
+      notificationDetails: details,
       payload: jsonEncode(message.data),
     );
   }
@@ -381,20 +392,21 @@ class NotificationService {
   /// Handler când utilizatorul apasă pe notificare
   void _onNotificationTapped(NotificationResponse response) {
     if (response.payload == null) return;
-    
+
     final data = jsonDecode(response.payload!);
-    
+
     // Dacă a apăsat pe buton de acțiune (Accept/Decline)
     if (response.actionId != null) {
       _handleNotificationAction(response.actionId!, data);
       return;
     }
-    
+
     _handleNotificationTap(data);
   }
 
   /// Gestionează acțiuni notificare (Accept/Decline friend request)
-  Future<void> _handleNotificationAction(String actionId, Map<String, dynamic> data) async {
+  Future<void> _handleNotificationAction(
+      String actionId, Map<String, dynamic> data) async {
     final friendshipId = data['friendship_id'] as String?;
     if (friendshipId == null) return;
 
@@ -403,29 +415,35 @@ class NotificationService {
         // Accept friend request
         await _supabase
             .from('friendships')
-            .update({'status': 'accepted', 'updated_at': DateTime.now().toIso8601String()})
+            .update({
+              'status': 'accepted',
+              'updated_at': DateTime.now().toIso8601String()
+            })
             .eq('id', friendshipId);
-        
+
         // Șterge notificarea
         final notificationId = data['notification_id'] as String?;
         if (notificationId != null) {
           await deleteNotification(notificationId);
         }
-        
+
         debugPrint('✅ Friend request accepted: $friendshipId');
       } else if (actionId == 'decline') {
         // Decline friend request
         await _supabase
             .from('friendships')
-            .update({'status': 'declined', 'updated_at': DateTime.now().toIso8601String()})
+            .update({
+              'status': 'declined',
+              'updated_at': DateTime.now().toIso8601String()
+            })
             .eq('id', friendshipId);
-        
+
         // Șterge notificarea
         final notificationId = data['notification_id'] as String?;
         if (notificationId != null) {
           await deleteNotification(notificationId);
         }
-        
+
         debugPrint('❌ Friend request declined: $friendshipId');
       }
     } catch (e) {
@@ -494,33 +512,28 @@ class NotificationService {
   /// Șterge notificare
   Future<void> deleteNotification(String notificationId) async {
     try {
-      await _supabase
-          .from('notifications')
-          .delete()
-          .eq('id', notificationId);
+      await _supabase.from('notifications').delete().eq('id', notificationId);
     } catch (e) {
       debugPrint('❌ Error deleting notification: $e');
     }
   }
 
   /// Încarcă notificări (cu filtru categorie opțional)
-  Future<List<NotificationModel>> loadNotifications({int limit = 50, String? category}) async {
+  Future<List<NotificationModel>> loadNotifications(
+      {int limit = 50, String? category}) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return [];
 
-      var query = _supabase
-          .from('notifications')
-          .select()
-          .eq('user_id', userId);
+      var query =
+          _supabase.from('notifications').select().eq('user_id', userId);
 
       if (category != null) {
         query = query.eq('category', category);
       }
 
-      final response = await query
-          .order('created_at', ascending: false)
-          .limit(limit);
+      final response =
+          await query.order('created_at', ascending: false).limit(limit);
 
       return (response as List)
           .map((json) => NotificationModel.fromJson(json))
