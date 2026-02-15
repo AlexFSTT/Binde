@@ -4,11 +4,11 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // ❌ ȘTERS: id("com.google.gms.google-services")
 }
 
-// ✅ Încarcă proprietățile keystore cu verificări
+// Încarcă proprietățile keystore
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -25,6 +25,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -39,7 +40,6 @@ android {
         versionName = flutter.versionName
     }
 
-    // ✅ Configurare signing pentru release (cu verificări)
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties.getProperty("keyAlias") ?: "binde"
@@ -51,21 +51,17 @@ android {
 
     buildTypes {
         release {
-            // ✅ Folosește signing config pentru release
             signingConfig = signingConfigs.getByName("release")
-            
-            // ✅ DEZACTIVAT TEMPORAR - Testăm fără minification
             isMinifyEnabled = false
             isShrinkResources = false
-            
-            // ✅ Dacă activezi minification, folosește ProGuard rules
-            // isMinifyEnabled = true
-            // isShrinkResources = true
-            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

@@ -8,7 +8,8 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/settings_provider.dart';
-import 'managers/app_lifecycle_manager.dart';  // ← ADĂUGAT
+import 'managers/app_lifecycle_manager.dart';
+import 'services/notification_service.dart';
 
 /// Instanța globală Supabase
 final supabase = Supabase.instance.client;
@@ -20,6 +21,15 @@ void main() async {
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
   );
+
+  // ✅ FIX: Inițializare notificări cu try-catch (nu crash-uim app-ul dacă Firebase e lipsă)
+  try {
+    await NotificationService().initialize();
+    debugPrint('✅ Notifications initialized');
+  } catch (e) {
+    debugPrint('⚠️ Notifications failed to initialize: $e');
+    // App-ul continuă să meargă chiar dacă notificările nu se inițializează
+  }
 
   runApp(
     const ProviderScope(
@@ -40,9 +50,7 @@ class BindeApp extends ConsumerWidget {
     if (settings.languageCode != null) {
       locale = Locale(settings.languageCode!);
     }
-    // Dacă locale e null, Flutter va folosi automat limba sistemului
 
-    // ✅ ÎNFĂȘURĂM MaterialApp CU AppLifecycleManager
     return AppLifecycleManager(
       child: MaterialApp(
         title: 'Binde',
@@ -63,12 +71,10 @@ class BindeApp extends ConsumerWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         localeResolutionCallback: (deviceLocale, supportedLocales) {
-          // Dacă utilizatorul a setat manual limba, folosește-o
           if (locale != null) {
             return locale;
           }
           
-          // Altfel, încearcă să găsească limba dispozitivului în cele suportate
           if (deviceLocale != null) {
             for (final supportedLocale in supportedLocales) {
               if (supportedLocale.languageCode == deviceLocale.languageCode) {
@@ -77,7 +83,6 @@ class BindeApp extends ConsumerWidget {
             }
           }
           
-          // Fallback la română
           return const Locale('ro');
         },
         

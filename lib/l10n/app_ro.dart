@@ -145,6 +145,31 @@ const Map<String, String> ro = {
 // Hamburger Menu
 'about_binde': 'Despre Binde',
 'binde_tagline': 'Binde - Platformă All-in-One',
-'binde_description': 'O platformă completă care combină Chat, Learn, Swirls, Shop, Sports și multe altele într-o singură aplicație.',
+'binde_description': 'O platformă completă care combină Chat, Learn, Shop, Sports și multe altele într-o singură aplicație.',
 'version': 'Versiune',
+
+  // Friends & Requests
+  'add_friends': 'Adaugă Prieteni',
+  'search_users': 'Caută utilizatori...',
+  'search_results': 'Rezultate Căutare',
+  'start_typing_to_search': 'Începe să scrii pentru a căuta',
+  'no_users_found': 'Nu s-au găsit utilizatori',
+  'pending_requests': 'Cereri în Așteptare',
+  'no_pending_requests': 'Nu există cereri în așteptare',
+  'add': 'Adaugă',
+  'pending': 'În așteptare',
+  'friend_request_sent_to': 'Cerere de prietenie trimisă către',
+  'failed_to_send_friend_request': 'Eroare la trimiterea cererii',
+  'friend_request_cancelled': 'Cerere anulată',
+  'accept': 'Acceptă',
+  'decline': 'Refuză',
+  'friend_request_accepted': 'Cerere acceptată',
+  'friend_request_declined': 'Cerere refuzată',
+  'unfriend': 'Elimină prieten',
+  'block_user': 'Blochează utilizator',
+  'unblock_user': 'Deblochează utilizator',
+  'user_blocked': 'Utilizator blocat',
+  'user_unblocked': 'Utilizator deblocat',
+  'are_you_friends': 'Trebuie să fiți prieteni pentru a trimite mesaje',
+
 };

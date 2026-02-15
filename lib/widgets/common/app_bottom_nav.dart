@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Bottom Navigation Bar cu 5 items vizibile + hamburger menu
-/// Items: Chat, Learn, Swirls, Shop, Sports, More (hamburger)
+/// Items: Chat, Learn,Shop, Sports, More (hamburger)
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;

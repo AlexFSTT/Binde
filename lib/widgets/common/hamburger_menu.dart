@@ -129,67 +129,69 @@ class _HamburgerMenuState extends State<HamburgerMenu>
     );
   }
 
-  /// Header compact
-  Widget _buildCompactHeader(ColorScheme colorScheme) {
-    return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary,
-            colorScheme.primaryContainer,
-          ],
-        ),
+/// Header compact
+Widget _buildCompactHeader(ColorScheme colorScheme) {
+  return Container(
+    height: 160,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          colorScheme.primary,
+          colorScheme.primaryContainer,
+        ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.rocket_launch,
-                    size: 40,
-                    color: colorScheme.primary,
-                  ),
+    ),
+    child: SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8), // ✅ FIX: Redus de la 12 la 8
+        child: Align(
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo
+              Container(
+                padding: const EdgeInsets.all(8), // ✅ FIX: Redus de la 10 la 8
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                
-                // App name (nu se traduce)
-                Text(
-                  'Binde',
-                  style: TextStyle(
-                    color: colorScheme.onPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
+                child: Icon(
+                  Icons.rocket_launch,
+                  size: 32, // ✅ FIX: Redus de la 36 la 32
+                  color: colorScheme.primary,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8), // ✅ FIX: Redus de la 10 la 8
+              
+              // App name
+              Text(
+                'Binde',
+                style: TextStyle(
+                  color: colorScheme.onPrimary,
+                  fontSize: 24, // ✅ FIX: Redus de la 26 la 24
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0, // ✅ FIX: Redus de la 1.2 la 1.0
+                ),
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Card animat
   Widget _buildAnimatedCard({
@@ -273,7 +275,7 @@ class _HamburgerMenuState extends State<HamburgerMenu>
           
           // Version (nu se traduce)
           Text(
-            'Binde v0.2.2',
+            'Binde v0.4.0',
             style: TextStyle(
               fontSize: 10,
               color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -310,7 +312,7 @@ class _HamburgerMenuState extends State<HamburgerMenu>
             ),
             const SizedBox(height: 12),
             Text(
-              '${context.tr('version')}: v0.2.2', // ✅ TRADUS
+              '${context.tr('version')}: v0.4.0', // ✅ TRADUS
               style: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),

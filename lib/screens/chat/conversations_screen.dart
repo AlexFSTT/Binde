@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/conversation_model.dart';
 import '../../services/chat_service.dart';
+import '../../widgets/common/notification_badge.dart';
+import '../../widgets/common/friends_drawer.dart';
+import '../../providers/notification_provider.dart';
+import '../notifications/notifications_screen.dart';
 import 'chat_detail_screen.dart';
-import 'user_selector_screen.dart';
+import '../friends/friend_search_screen.dart';
 
 /// Ecran pentru lista de conversații
-/// ✅ DESIGN NOU: Card care "iese" din avatar - avatar overlap pe margine
-class ConversationsScreen extends StatefulWidget {
+class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
   @override
-  State<ConversationsScreen> createState() => _ConversationsScreenState();
+  ConsumerState<ConversationsScreen> createState() => _ConversationsScreenState();
 }
 
-class _ConversationsScreenState extends State<ConversationsScreen> {
+class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   final ChatService _chatService = ChatService();
   final SupabaseClient _supabase = Supabase.instance.client;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
   List<Conversation> _conversations = [];
   Map<String, int> _unreadCounts = {};
@@ -142,7 +147,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const UserSelectorScreen(),
+        builder: (context) => const FriendSearchScreen(),
       ),
     ).then((_) {
       _loadConversations();
@@ -152,11 +157,42 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    // ✅ Badge doar pentru CHAT notifications (friend requests)
+    final hasChatNotifications = ref.watch(hasChatUnreadNotificationsProvider);
 
     return Scaffold(
+      key: _scaffoldKey,
+      // ✅ Friends drawer
+      drawer: FriendsDrawer(
+        onChatOpened: _loadConversations,
+      ),
       appBar: AppBar(
+        // ✅ Friends icon la stânga
+        leading: IconButton(
+          icon: const Icon(Icons.people_outline),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+          tooltip: 'Friends',
+        ),
         title: Text(context.tr('nav_chat')),
         actions: [
+          // Notification bell - doar friend requests
+          IconButton(
+            icon: NotificationBadge(
+              showBadge: hasChatNotifications,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(category: 'chat'),
+                ),
+              );
+            },
+          ),
+          // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadConversations,
@@ -222,17 +258,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: colorScheme.primary.withValues(alpha: 0.3),
+              color: colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
               context.tr('no_conversations'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.tr('start_conversation'),
               style: TextStyle(
+                fontSize: 18,
                 color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
@@ -244,7 +276,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     return RefreshIndicator(
       onRefresh: _loadConversations,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4), // ✅ Redus de la 12/8
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         itemCount: _conversations.length,
         itemBuilder: (context, index) {
           final conversation = _conversations[index];
@@ -255,23 +287,21 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     );
   }
 
-  /// ✅ DESIGN NOU: Card cu avatar overlapping - card "iese" din avatar
   Widget _buildConversationCard(
     Conversation conversation,
     ColorScheme colorScheme,
     int unreadCount,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 0, left: 2), // ✅ Zero gap între cards!
+      padding: const EdgeInsets.only(bottom: 0, left: 2),
       child: SizedBox(
-        height: 66, // ✅ Redus de la 76 la 66 pentru avatar mai mic
+        height: 66,
         child: Stack(
           children: [
-            // ✅ CARDUL - Începe EXACT unde e avatarul (cu overlap)
             Positioned(
-              left: 26, // ✅ Card începe la jumătatea avatarului (52/2 = 26)
+              left: 26,
               right: 0,
-              top: 7, // ✅ Centrat vertical (66-52)/2 = 7
+              top: 7,
               bottom: 7,
               child: Card(
                 margin: EdgeInsets.zero,
@@ -285,20 +315,18 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
                     padding: const EdgeInsets.only(
-                      left: 36, // ✅ Spațiu pentru avatar mai mic (26 overlap + 10 padding)
-                      right: 10, // ✅ Mai compact
-                      top: 5, // ✅ Mai compact
-                      bottom: 5, // ✅ Mai compact
+                      left: 36,
+                      right: 10,
+                      top: 5,
+                      bottom: 5,
                     ),
                     child: Row(
                       children: [
-                        // Informații conversație
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Numele + badge necitite
                               Row(
                                 children: [
                                   Expanded(
@@ -308,12 +336,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                         fontWeight: unreadCount > 0
                                             ? FontWeight.bold
                                             : FontWeight.w600,
-                                        fontSize: 15, // ✅ Redus de la 16 la 15
+                                        fontSize: 15,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  // Badge mesaje necitite
                                   if (unreadCount > 0) ...[
                                     const SizedBox(width: 8),
                                     Container(
@@ -329,7 +356,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                         unreadCount > 99 ? '99+' : '$unreadCount',
                                         style: TextStyle(
                                           color: colorScheme.onPrimary,
-                                          fontSize: 10, // ✅ Redus de la 12 la 11
+                                          fontSize: 10,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -337,8 +364,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                   ],
                                 ],
                               ),
-                              const SizedBox(height: 1), // ✅ Minim spacing
-                              // Ultimul mesaj
+                              const SizedBox(height: 1),
                               conversation.lastMessage != null
                                   ? Text(
                                       conversation.lastMessage!,
@@ -348,7 +374,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                         color: unreadCount > 0
                                             ? colorScheme.onSurface.withValues(alpha: 0.9)
                                             : colorScheme.onSurface.withValues(alpha: 0.7),
-                                        fontSize: 12, // ✅ Redus de la 13 la 12
+                                        fontSize: 12,
                                         fontWeight: unreadCount > 0
                                             ? FontWeight.w500
                                             : FontWeight.normal,
@@ -359,14 +385,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                       style: TextStyle(
                                         color: colorScheme.onSurface.withValues(alpha: 0.5),
                                         fontStyle: FontStyle.italic,
-                                        fontSize: 12, // ✅ Redus de la 13 la 12
+                                        fontSize: 12,
                                       ),
                                     ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Timpul în dreapta
                         if (conversation.lastMessageAt != null)
                           Text(
                             _formatConversationTime(conversation.lastMessageAt!),
@@ -374,7 +399,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                               color: unreadCount > 0
                                   ? colorScheme.primary
                                   : colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 11, // ✅ Redus de la 12 la 11
+                              fontSize: 11,
                               fontWeight: unreadCount > 0
                                   ? FontWeight.w600
                                   : FontWeight.w500,
@@ -387,19 +412,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
             ),
             
-            // ✅ AVATARUL - Poziționat DEASUPRA cardului (overlap)
             Positioned(
               left: 0,
-              top: 7, // ✅ Centrat vertical (66-52)/2 = 7
+              top: 7,
               child: Hero(
                 tag: 'conversation_avatar_${conversation.id}',
                 child: Container(
-                  width: 52, // ✅ Redus de la 64 la 52
-                  height: 52, // ✅ Redus de la 64 la 52
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
                     shape: BoxShape.circle,
-                    // Shadow pentru a-l "ridica" deasupra cardului
                     boxShadow: [
                       BoxShadow(
                         color: colorScheme.shadow.withValues(alpha: 0.3),
@@ -408,10 +431,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                       ),
                     ],
                   ),
-                  // ✅ Center pentru a asigura poziționare consistentă
                   child: Center(
                     child: CircleAvatar(
-                      radius: 24, // ✅ Redus de la 30 la 24 (48x48)
+                      radius: 24,
                       backgroundColor: colorScheme.primaryContainer,
                       backgroundImage: conversation.otherUserAvatar != null
                           ? NetworkImage(conversation.otherUserAvatar!)
@@ -422,7 +444,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                               style: TextStyle(
                                 color: colorScheme.onPrimaryContainer,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 20, // ✅ Redus de la 24 la 20
+                                fontSize: 20,
                               ),
                             )
                           : null,

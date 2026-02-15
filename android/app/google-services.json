@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189600809122",
+    "project_id": "binde-dfe91",
+    "storage_bucket": "binde-dfe91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189600809122:android:1b2620fa0a66c89deb57fb",
+        "android_client_info": {
+          "package_name": "com.binde.binde"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPO7fgEt_J-d-frAWuSkb8-nLHyz4sFPU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

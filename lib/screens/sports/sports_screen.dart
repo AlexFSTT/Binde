@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/common/notification_badge.dart';
+import '../../providers/notification_provider.dart';
+import '../notifications/notifications_screen.dart';
 import 'sports_news_tab.dart';
 import 'sports_live_tab.dart';
 
-class SportsScreen extends StatefulWidget {
+class SportsScreen extends ConsumerStatefulWidget {
   const SportsScreen({super.key});
 
   @override
-  State<SportsScreen> createState() => _SportsScreenState();
+  ConsumerState<SportsScreen> createState() => _SportsScreenState();
 }
 
-class _SportsScreenState extends State<SportsScreen> with SingleTickerProviderStateMixin {
+class _SportsScreenState extends ConsumerState<SportsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -28,10 +32,29 @@ class _SportsScreenState extends State<SportsScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    // ✅ Badge doar pentru SPORTS notifications
+    final hasSportsNotifications = ref.watch(hasSportsUnreadNotificationsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('nav_sports')),
+        actions: [
+          // Notification bell - doar sports updates
+          IconButton(
+            icon: NotificationBadge(
+              showBadge: hasSportsNotifications,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(category: 'sports'),
+                ),
+              );
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
