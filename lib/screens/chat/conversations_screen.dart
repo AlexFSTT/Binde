@@ -381,7 +381,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                                       ),
                                     )
                                   : Text(
-                                      context.tr('no_messages'),
+                                      context.tr('Start the conversation by sending a message!'),
                                       style: TextStyle(
                                         color: colorScheme.onSurface.withValues(alpha: 0.5),
                                         fontStyle: FontStyle.italic,
