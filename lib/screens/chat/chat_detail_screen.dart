@@ -10,7 +10,7 @@ import 'dart:async';
 
 /// Ecran pentru chat 1-la-1 între utilizatorul curent și un alt utilizator
 /// Cu status Online/Last seen/Typing și profil clickable
-/// INCLUDE: Bubble design îmbunătățit + fix avatar Realtime + fix timezone
+/// ✅ FIX: Avatar-ul sender-ului se afișează corect la mesaje noi realtime
 class ChatDetailScreen extends StatefulWidget {
   final Conversation conversation;
   final VoidCallback? onMessageSent;
@@ -181,6 +181,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             
             try {
               // Fetch complet mesajul cu avatar și nume
+              // ✅ FOLOSIM ALIAS 'sender' consistent cu getMessages()
               final response = await _supabase
                   .from('messages')
                   .select('''
@@ -190,7 +191,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     content,
                     is_read,
                     created_at,
-                    profiles:sender_id (
+                    sender:profiles!messages_sender_id_fkey(
                       full_name,
                       avatar_url
                     )
@@ -200,9 +201,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
               final newMessage = Message.fromJson(response);
               
+              // ✅ FIX AVATAR "?": Extragem datele sender-ului din obiectul nested
+              // Message.fromJson() nu parsează automat sender-ul nested,
+              // trebuie extras manual și adăugat cu copyWith()
+              final sender = response['sender'] as Map<String, dynamic>?;
+              final messageWithSender = newMessage.copyWith(
+                senderName: sender?['full_name'] as String?,
+                senderAvatar: sender?['avatar_url'] as String?,
+              );
+              
               if (mounted) {
                 setState(() {
-                  _messages.add(newMessage);
+                  // ✅ Verificăm să nu adăugăm mesajul duplicat
+                  final exists = _messages.any((m) => m.id == messageWithSender.id);
+                  if (!exists) {
+                    _messages.add(messageWithSender);
+                  }
                 });
 
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -210,7 +224,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 });
 
                 final currentUserId = _supabase.auth.currentUser?.id;
-                if (newMessage.senderId != currentUserId) {
+                if (messageWithSender.senderId != currentUserId) {
                   _markMessagesAsRead();
                 }
               }
@@ -225,6 +239,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void _removeRealtimeSubscription() {
     if (_channel != null) {
       _supabase.removeChannel(_channel!);
+      _channel = null;
     }
   }
 
@@ -255,7 +270,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${context.tr('message_error')}: $e'),
+            content: Text('${context.tr('error')}: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -295,6 +310,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  /// Formatează timpul mesajului - WhatsApp style
+  String _formatMessageTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour:$minute';
+    
+    if (messageDate.isAtSameMomentAs(today)) {
+      return timeStr;
+    } else if (messageDate.isAtSameMomentAs(yesterday)) {
+      return 'Yesterday $timeStr';
+    } else {
+      final day = dateTime.day.toString().padLeft(2, '0');
+      final month = dateTime.month.toString().padLeft(2, '0');
+      return '$day/$month $timeStr';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -316,29 +353,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       : null,
                   child: widget.conversation.otherUserAvatar == null
                       ? Text(
-                          (widget.conversation.otherUserName ?? '?')[0]
-                              .toUpperCase(),
+                          (widget.conversation.otherUserName ?? '?')[0].toUpperCase(),
                           style: TextStyle(
                             color: colorScheme.onPrimaryContainer,
-                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         )
                       : null,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Flexible(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.conversation.otherUserName ?? 'Unknown User',
+                      widget.conversation.otherUserName ?? 'Chat',
                       style: const TextStyle(fontSize: 16),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    _buildStatusText(colorScheme),
+                    // Status sub-titlu
+                    _buildStatusSubtitle(colorScheme),
                   ],
                 ),
               ),
@@ -348,36 +385,41 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       body: Column(
         children: [
-          Expanded(
-            child: _buildMessagesList(colorScheme),
-          ),
-          _buildWhatsAppStyleMessageInput(colorScheme),
+          Expanded(child: _buildMessagesList(colorScheme)),
+          _buildMessageInput(colorScheme),
         ],
       ),
     );
   }
 
-  Widget _buildStatusText(ColorScheme colorScheme) {
-    String statusText;
-    Color statusColor;
-
+  Widget _buildStatusSubtitle(ColorScheme colorScheme) {
     if (_isTyping) {
-      statusText = 'typing...';
-      statusColor = colorScheme.primary;
-    } else if (_isOnline) {
-      statusText = 'Online';
-      statusColor = Colors.green;
-    } else {
-      statusText = _presenceService.formatLastSeen(_lastSeen, _isOnline);
-      statusColor = colorScheme.onSurface.withValues(alpha: 0.6);
+      return Text(
+        'typing...',
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.green[400],
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+
+    if (_isOnline) {
+      return Text(
+        'Online',
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.green[400],
+        ),
+      );
     }
 
     return Text(
-      statusText,
+      _presenceService.formatLastSeen(_lastSeen, _isOnline),
       style: TextStyle(
-        fontSize: 12,
-        color: statusColor,
-        fontStyle: _isTyping ? FontStyle.italic : FontStyle.normal,
+        fontSize: 11,
+        color: colorScheme.onSurface.withValues(alpha: 0.6),
+        fontStyle: _lastSeen == null ? FontStyle.italic : FontStyle.normal,
       ),
     );
   }
@@ -473,22 +515,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                // Background mai întunecat
                 color: isMine
                     ? colorScheme.primaryContainer.withValues(alpha: 0.9)
                     : colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
-                // Partea rotundă lângă avatar - ca un balon
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
                   bottomLeft: isMine
                       ? const Radius.circular(18)
-                      : const Radius.circular(2), // ← Colt ascuțit lângă avatar
+                      : const Radius.circular(2),
                   bottomRight: isMine
-                      ? const Radius.circular(2)  // ← Colt ascuțit lângă avatar
+                      ? const Radius.circular(2)
                       : const Radius.circular(18),
                 ),
-                // Shadow pentru depth
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -510,116 +549,91 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // ✅ TIMP ÎMBUNĂTĂȚIT - ora/yesterday/data
                   Text(
                     _formatMessageTime(message.createdAt),
                     style: TextStyle(
                       fontSize: 11,
                       color: isMine
-                          ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
-                          : colorScheme.onSurface.withValues(alpha: 0.6),
+                          ? colorScheme.onPrimaryContainer.withValues(alpha: 0.6)
+                          : colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ],
               ),
             ),
           ),
+          // Spațiu pentru mesajele mele (dreapta)
+          if (isMine) const SizedBox(width: 8),
         ],
       ),
     );
   }
 
-  /// Formatează timpul pentru mesaje - WhatsApp style
-  /// ✅ FIX TIMEZONE: Folosim .toLocal() pentru ora locală a device-ului
-  /// - Astăzi → "14:30"
-  /// - Ieri → "yesterday"
-  /// - Altă zi → "23/01/2025"
-  String _formatMessageTime(DateTime? messageTime) {
-    if (messageTime == null) return '';
-
-    // ✅ CONVERTIM LA TIMEZONE LOCAL
-    final localTime = messageTime.toLocal();
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final messageDate = DateTime(localTime.year, localTime.month, localTime.day);
-
-    // Formatăm ora LOCALĂ
-    final hour = localTime.hour.toString().padLeft(2, '0');
-    final minute = localTime.minute.toString().padLeft(2, '0');
-
-    // Astăzi → doar ora
-    if (messageDate.isAtSameMomentAs(today)) {
-      return '$hour:$minute';
-    }
-
-    // Ieri → "yesterday"
-    if (messageDate.isAtSameMomentAs(yesterday)) {
-      return 'yesterday';
-    }
-
-    // Altă zi → data completă
-    final day = localTime.day.toString().padLeft(2, '0');
-    final month = localTime.month.toString().padLeft(2, '0');
-    final year = localTime.year;
-
-    return '$day/$month/$year';
-  }
-
-  Widget _buildWhatsAppStyleMessageInput(ColorScheme colorScheme) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
+  Widget _buildMessageInput(ColorScheme colorScheme) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 8,
+        top: 8,
+        bottom: MediaQuery.of(context).padding.bottom + 8,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              maxLines: 4,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                hintText: context.tr('type_message'),
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
                 ),
-                child: TextField(
-                  controller: _messageController,
-                  decoration: InputDecoration(
-                    hintText: context.tr('type_message'),
-                    hintStyle: TextStyle(
-                        color: colorScheme.onSurface.withValues(alpha: 0.5)),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    prefixIcon: Icon(Icons.emoji_emotions_outlined,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6)),
-                  ),
-                  maxLines: null,
-                  minLines: 1,
-                  textCapitalization: TextCapitalization.sentences,
-                  onSubmitted: (_) => _sendMessage(),
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              decoration: BoxDecoration(
-                  color: colorScheme.primary, shape: BoxShape.circle),
-              child: IconButton(
-                icon: _isSending
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                colorScheme.onPrimary)))
-                    : Icon(Icons.send,
-                        color: colorScheme.onPrimary, size: 22),
-                onPressed: _isSending ? null : _sendMessage,
-                splashRadius: 24,
-              ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
+            child: IconButton(
+              onPressed: _isSending ? null : _sendMessage,
+              icon: _isSending
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.onPrimary,
+                      ),
+                    )
+                  : Icon(
+                      Icons.send,
+                      color: colorScheme.onPrimary,
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

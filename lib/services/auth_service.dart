@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'notification_service.dart';
 
 /// Serviciu pentru autentificare - gestionează login, register, logout
 class AuthService {
@@ -63,8 +64,16 @@ class AuthService {
   }
   
   /// LOGOUT
+  /// ✅ FIX CRITIC: Șterge FCM token ÎNAINTE de sign out
+  /// Fără asta, device-ul continuă să primească push notifications
+  /// chiar dacă user-ul s-a delogat
   Future<AuthResult> signOut() async {
     try {
+      // ✅ PASUL 1: Șterge FCM token-ul acestui device din baza de date
+      // Trebuie făcut ÎNAINTE de signOut, pentru că avem nevoie de userId
+      await NotificationService().removeFCMToken();
+      
+      // ✅ PASUL 2: Acum facem sign out
       await _supabase.auth.signOut();
       return AuthResult.success('Deconectat cu succes!');
     } catch (e) {
@@ -96,27 +105,19 @@ class AuthService {
       return 'Acest email este deja înregistrat.';
     }
     if (error.contains('Password should be at least')) {
-      return 'Parola trebuie să aibă minim 6 caractere.';
-    }
-    if (error.contains('Invalid email')) {
-      return 'Adresa de email nu este validă.';
+      return 'Parola trebuie să aibă cel puțin 6 caractere.';
     }
     return error;
   }
 }
 
-/// Clasă pentru rezultatul autentificării
+/// Model simplu pentru rezultatul autentificării
 class AuthResult {
   final bool isSuccess;
   final String message;
-  
-  AuthResult._({required this.isSuccess, required this.message});
-  
-  factory AuthResult.success(String message) {
-    return AuthResult._(isSuccess: true, message: message);
-  }
-  
-  factory AuthResult.error(String message) {
-    return AuthResult._(isSuccess: false, message: message);
-  }
+
+  AuthResult._(this.isSuccess, this.message);
+
+  factory AuthResult.success(String message) => AuthResult._(true, message);
+  factory AuthResult.error(String message) => AuthResult._(false, message);
 }

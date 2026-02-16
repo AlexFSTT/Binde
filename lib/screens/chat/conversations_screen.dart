@@ -13,8 +13,8 @@ import '../friends/friend_search_screen.dart';
 
 /// Ecran pentru lista de conversații
 /// ✅ BADGE SEPARATION:
-///    - Clopotel (bell icon) = DOAR friend requests
-///    - Chat tab (bottom nav) = friend requests + mesaje necitite
+///    - Clopotel (bell icon) = DOAR friend requests (cu COUNTER)
+///    - Chat tab (bottom nav) = friend requests + mesaje necitite (cu COUNTER)
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
@@ -71,6 +71,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     if (_messagesChannel != null) {
       debugPrint('🔕 Removing Realtime subscription');
       _supabase.removeChannel(_messagesChannel!);
+      _messagesChannel = null;
     }
   }
 
@@ -151,13 +152,30 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     ).then((_) => _loadConversations());
   }
 
+  /// Formatează timpul conversației
+  String _formatConversationTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Acum';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}z';
+    } else {
+      return '${dateTime.day}/${dateTime.month}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     
-    // ✅ CLOPOTEL = doar friend requests (NU include mesaje necitite!)
-    // Mesajele necitite se văd în badge-ul de pe Chat tab (bottom navigation)
-    final hasChatNotifications = ref.watch(hasChatUnreadNotificationsProvider);
+    // ✅ COUNTER pentru clopotel = doar friend requests
+    final chatNotificationCount = ref.watch(chatNotificationCountProvider);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -172,11 +190,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         ),
         title: Text(context.tr('nav_chat')),
         actions: [
-          // ✅ CLOPOTEL = doar friend requests
-          // 🔔 Bulină roșie doar când ai friend requests necitite
+          // ✅ CLOPOTEL = doar friend requests cu COUNTER
           IconButton(
             icon: NotificationBadge(
-              showBadge: hasChatNotifications,
+              count: chatNotificationCount,
               child: const Icon(Icons.notifications_outlined),
             ),
             onPressed: () {
@@ -316,29 +333,31 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      conversation.otherUserName ?? 'Unknown User',
+                                      conversation.otherUserName ?? 'Unknown',
                                       style: TextStyle(
                                         fontWeight: unreadCount > 0
                                             ? FontWeight.bold
                                             : FontWeight.w600,
-                                        fontSize: 15,
+                                        fontSize: 14,
                                       ),
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  if (unreadCount > 0) ...[
-                                    const SizedBox(width: 8),
+                                  // ✅ Counter badge pe conversație
+                                  if (unreadCount > 0)
                                     Container(
+                                      margin: const EdgeInsets.only(left: 4),
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
+                                        horizontal: 6,
+                                        vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
                                         color: colorScheme.primary,
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
-                                        unreadCount > 99 ? '99+' : '$unreadCount',
+                                        unreadCount > 99 ? '99+' : unreadCount.toString(),
                                         style: TextStyle(
                                           color: colorScheme.onPrimary,
                                           fontSize: 10,
@@ -346,33 +365,33 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                                         ),
                                       ),
                                     ),
-                                  ],
                                 ],
                               ),
-                              const SizedBox(height: 1),
-                              conversation.lastMessage != null
-                                  ? Text(
-                                      conversation.lastMessage!,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: unreadCount > 0
-                                            ? colorScheme.onSurface.withValues(alpha: 0.9)
-                                            : colorScheme.onSurface.withValues(alpha: 0.7),
-                                        fontSize: 12,
-                                        fontWeight: unreadCount > 0
-                                            ? FontWeight.w500
-                                            : FontWeight.normal,
-                                      ),
-                                    )
-                                  : Text(
-                                      context.tr('Start the conversation by sending a message!'),
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                                        fontStyle: FontStyle.italic,
-                                        fontSize: 12,
-                                      ),
-                                    ),
+                              const SizedBox(height: 2),
+                              if (conversation.lastMessage != null)
+                                Text(
+                                  conversation.lastMessage!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: unreadCount > 0
+                                        ? colorScheme.onSurface
+                                        : colorScheme.onSurface.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                    fontWeight: unreadCount > 0
+                                        ? FontWeight.w500
+                                        : FontWeight.normal,
+                                  ),
+                                )
+                              else
+                                Text(
+                                  context.tr('Start the conversation by sending a message!'),
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 12,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -429,7 +448,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                               style: TextStyle(
                                 color: colorScheme.onPrimaryContainer,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 20,
+                                fontSize: 18,
                               ),
                             )
                           : null,
@@ -442,28 +461,5 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         ),
       ),
     );
-  }
-
-  String _formatConversationTime(DateTime messageTime) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final messageDate = DateTime(messageTime.year, messageTime.month, messageTime.day);
-
-    final hour = messageTime.hour.toString().padLeft(2, '0');
-    final minute = messageTime.minute.toString().padLeft(2, '0');
-
-    if (messageDate.isAtSameMomentAs(today)) {
-      return '$hour:$minute';
-    }
-
-    if (messageDate.isAtSameMomentAs(yesterday)) {
-      return 'yesterday';
-    }
-
-    final day = messageTime.day.toString().padLeft(2, '0');
-    final month = messageTime.month.toString().padLeft(2, '0');
-
-    return '$day/$month';
   }
 }

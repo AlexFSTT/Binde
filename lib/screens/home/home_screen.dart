@@ -11,6 +11,7 @@ import '../sports/sports_screen.dart';
 
 /// Home screen cu bottom navigation
 /// ✅ REALTIME: Badge-urile pe tab-uri se actualizează automat
+/// ✅ UPGRADE: Counter badges (3, 12, 99+) în loc de bulină roșie
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -50,11 +51,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ BADGE COMBINAT pentru Chat: friend requests + mesaje necitite
-    final hasChatBadge = ref.watch(hasChatBadgeProvider);
+    // ✅ COUNT pentru Chat: friend requests + mesaje necitite
+    final chatBadgeCount = ref.watch(chatBadgeCountProvider);
     
-    // Badge pentru Learn (doar notificări)
-    final hasLearnNotifications = ref.watch(hasLearnUnreadNotificationsProvider);
+    // ✅ COUNT pentru Learn
+    final learnBadgeCount = ref.watch(learnBadgeCountProvider);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -68,30 +69,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onDestinationSelected: _onNavigationTap,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
-          // ✅ Chat - Badge COMBINAT (friend requests + mesaje necitite)
-          // 🔴 Bulină roșie când:
-          //    - Ai friend requests necitite SAU
-          //    - Ai mesaje necitite în orice conversație
+          // ✅ Chat - COUNTER badge (friend requests + mesaje necitite)
           NavigationDestination(
             icon: NotificationBadge(
-              showBadge: hasChatBadge,
+              count: chatBadgeCount,
               child: const Icon(Icons.chat_bubble_outline),
             ),
             selectedIcon: NotificationBadge(
-              showBadge: hasChatBadge,
+              count: chatBadgeCount,
               child: const Icon(Icons.chat_bubble),
             ),
             label: context.tr('nav_chat'),
           ),
           
-          // ✅ Learn - Badge pentru learn updates
+          // ✅ Learn - COUNTER badge
           NavigationDestination(
             icon: NotificationBadge(
-              showBadge: hasLearnNotifications,
+              count: learnBadgeCount,
               child: const Icon(Icons.school_outlined),
             ),
             selectedIcon: NotificationBadge(
-              showBadge: hasLearnNotifications,
+              count: learnBadgeCount,
               child: const Icon(Icons.school),
             ),
             label: context.tr('nav_learn'),

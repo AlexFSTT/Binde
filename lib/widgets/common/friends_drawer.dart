@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/friendship_model.dart';
 import '../../services/friendship_service.dart';
 import '../../services/chat_service.dart';
 import '../../screens/chat/chat_detail_screen.dart';
 
 /// Drawer pentru lista de prieteni
+/// ✅ REALTIME: Statusul online/offline se actualizează INSTANT
+///    Nu mai e nevoie să închizi și redeschizi drawer-ul
 class FriendsDrawer extends StatefulWidget {
   final VoidCallback onChatOpened;
 
@@ -20,18 +23,61 @@ class FriendsDrawer extends StatefulWidget {
 class _FriendsDrawerState extends State<FriendsDrawer> {
   final FriendshipService _friendshipService = FriendshipService();
   final ChatService _chatService = ChatService();
+  final SupabaseClient _supabase = Supabase.instance.client;
   
   List<FriendshipModel> _friends = [];
   bool _isLoading = true;
+
+  // ✅ NOU: Realtime channel pentru status updates
+  RealtimeChannel? _profilesChannel;
 
   @override
   void initState() {
     super.initState();
     _loadFriends();
+    _subscribeToProfileChanges(); // ✅ Pornește ascultarea realtime
+  }
+
+  @override
+  void dispose() {
+    // ✅ Cleanup realtime subscription
+    _profilesChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  /// ✅ NOU: Abonare la schimbări în tabela profiles (is_online)
+  /// Când un prieten se conectează/deconectează → reload instant
+  void _subscribeToProfileChanges() {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return;
+
+    // Cleanup dacă există deja
+    _profilesChannel?.unsubscribe();
+
+    _profilesChannel = _supabase
+        .channel('friends-online-status-$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'profiles',
+          callback: (payload) {
+            final changedColumn = payload.oldRecord.keys.toList();
+            debugPrint('👤 Profile changed: ${payload.newRecord['id']} - columns: $changedColumn');
+            
+            // Verificăm dacă s-a schimbat is_online
+            // Reîncărcăm lista de prieteni pentru a actualiza statusul
+            _loadFriends();
+          },
+        )
+        .subscribe();
+
+    debugPrint('✅ Subscribed to profiles changes for realtime online status');
   }
 
   Future<void> _loadFriends() async {
-    setState(() => _isLoading = true);
+    if (_friends.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     
     final friends = await _friendshipService.getFriends();
     
@@ -105,13 +151,15 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
                 ? const Center(child: CircularProgressIndicator())
                 : _friends.isEmpty
                     ? _buildEmptyState(colorScheme)
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: _friends.length,
-                        itemBuilder: (context, index) {
-                          final friend = _friends[index];
-                          return _buildFriendCard(friend, colorScheme);
-                        },
+                    : RefreshIndicator(
+                        onRefresh: _loadFriends,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _friends.length,
+                          itemBuilder: (context, index) {
+                            return _buildFriendCard(_friends[index], colorScheme);
+                          },
+                        ),
                       ),
           ),
         ],
@@ -120,55 +168,50 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
   }
 
   Widget _buildHeader(ColorScheme colorScheme) {
+    // Numără prietenii online
+    final onlineCount = _friends.where((f) => f.otherUserIsOnline == true).length;
+    
     return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary,
-            colorScheme.primaryContainer,
-          ],
-        ),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 16,
+        bottom: 16,
+        left: 16,
+        right: 16,
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.end,
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.people,
-                    color: colorScheme.onPrimary,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Friends',
-                    style: TextStyle(
-                      color: colorScheme.onPrimary,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.people,
+                color: colorScheme.onPrimary,
+                size: 28,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(width: 12),
               Text(
-                '${_friends.length} ${_friends.length == 1 ? 'friend' : 'friends'}',
+                'Friends',
                 style: TextStyle(
-                  color: colorScheme.onPrimary.withValues(alpha: 0.8),
-                  fontSize: 14,
+                  color: colorScheme.onPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            '${_friends.length} ${_friends.length == 1 ? 'friend' : 'friends'}'
+            '${onlineCount > 0 ? ' · $onlineCount online' : ''}',
+            style: TextStyle(
+              color: colorScheme.onPrimary.withValues(alpha: 0.8),
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -205,7 +248,7 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
   }
 
   Widget _buildFriendCard(FriendshipModel friend, ColorScheme colorScheme) {
-    // ✅ Status REAL din database (nu mai e hardcodat!)
+    // ✅ Status REAL din database - acum se actualizează INSTANT via Realtime
     final isOnline = friend.otherUserIsOnline ?? false;
 
     return Card(

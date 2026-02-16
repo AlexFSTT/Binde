@@ -181,6 +181,37 @@ class NotificationService {
     }
   }
 
+  /// ✅ NOU: Șterge FCM token-ul curent din baza de date
+  /// Apelat la LOGOUT pentru a opri notificările pe acest device
+  /// CRITIC: Fără asta, device-ul primește notificări chiar dacă user-ul s-a delogat!
+  Future<void> removeFCMToken() async {
+    try {
+      final token = await _fcm.getToken();
+      if (token == null) {
+        debugPrint('⚠️ No FCM token to remove');
+        return;
+      }
+
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        debugPrint('⚠️ No user ID - cannot remove FCM token');
+        return;
+      }
+
+      // Șterge token-ul din tabela fcm_tokens
+      await _supabase
+          .from('fcm_tokens')
+          .delete()
+          .eq('token', token)
+          .eq('user_id', userId);
+
+      debugPrint('✅ FCM token removed for user: $userId');
+    } catch (e) {
+      debugPrint('❌ Error removing FCM token: $e');
+      // Nu aruncăm eroarea - logout-ul trebuie să continue chiar dacă ștergerea eșuează
+    }
+  }
+
   /// ✅ Realtime listener pe notifications: INSERT/UPDATE/DELETE => refresh badge + listă
   Future<void> _subscribeToNotificationsRealtime() async {
     final userId = _supabase.auth.currentUser?.id;
