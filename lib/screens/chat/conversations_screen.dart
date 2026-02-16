@@ -12,7 +12,9 @@ import 'chat_detail_screen.dart';
 import '../friends/friend_search_screen.dart';
 
 /// Ecran pentru lista de conversații
-/// ✅ REALTIME: Badge-ul roșu se actualizează automat când primești friend request
+/// ✅ BADGE SEPARATION:
+///    - Clopotel (bell icon) = DOAR friend requests
+///    - Chat tab (bottom nav) = friend requests + mesaje necitite
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
@@ -153,8 +155,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     
-    // ✅ REALTIME BADGE: ref.watch() înseamnă că widget-ul se re-construiește
-    // automat când provider-ul emite o valoare nouă (când primești notificare)
+    // ✅ CLOPOTEL = doar friend requests (NU include mesaje necitite!)
+    // Mesajele necitite se văd în badge-ul de pe Chat tab (bottom navigation)
     final hasChatNotifications = ref.watch(hasChatUnreadNotificationsProvider);
 
     return Scaffold(
@@ -170,10 +172,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         ),
         title: Text(context.tr('nav_chat')),
         actions: [
-          // ✅ REALTIME BADGE: Se actualizează automat când hasChatNotifications se schimbă
+          // ✅ CLOPOTEL = doar friend requests
+          // 🔔 Bulină roșie doar când ai friend requests necitite
           IconButton(
             icon: NotificationBadge(
-              showBadge: hasChatNotifications, // 🔴 Bulină roșie când există notificări
+              showBadge: hasChatNotifications,
               child: const Icon(Icons.notifications_outlined),
             ),
             onPressed: () {

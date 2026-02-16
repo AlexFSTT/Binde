@@ -10,7 +10,7 @@ import '../shop/products_list_screen.dart';
 import '../sports/sports_screen.dart';
 
 /// Home screen cu bottom navigation
-/// ✅ REALTIME: Badge-urile pe tab-uri se actualizează automat când primești notificări
+/// ✅ REALTIME: Badge-urile pe tab-uri se actualizează automat
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -50,9 +50,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ REALTIME BADGES: ref.watch() face ca widget-ul să se re-construiască
-    // automat când provider-ul emite o nouă valoare (când primești notificare)
-    final hasChatNotifications = ref.watch(hasChatUnreadNotificationsProvider);
+    // ✅ BADGE COMBINAT pentru Chat: friend requests + mesaje necitite
+    final hasChatBadge = ref.watch(hasChatBadgeProvider);
+    
+    // Badge pentru Learn (doar notificări)
     final hasLearnNotifications = ref.watch(hasLearnUnreadNotificationsProvider);
 
     return Scaffold(
@@ -67,23 +68,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onDestinationSelected: _onNavigationTap,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
-          // ✅ Chat - Badge pentru friend requests (actualizare în timp real)
+          // ✅ Chat - Badge COMBINAT (friend requests + mesaje necitite)
+          // 🔴 Bulină roșie când:
+          //    - Ai friend requests necitite SAU
+          //    - Ai mesaje necitite în orice conversație
           NavigationDestination(
             icon: NotificationBadge(
-              showBadge: hasChatNotifications, // 🔴 Bulină roșie când există notificări
+              showBadge: hasChatBadge,
               child: const Icon(Icons.chat_bubble_outline),
             ),
             selectedIcon: NotificationBadge(
-              showBadge: hasChatNotifications,
+              showBadge: hasChatBadge,
               child: const Icon(Icons.chat_bubble),
             ),
             label: context.tr('nav_chat'),
           ),
           
-          // ✅ Learn - Badge pentru learn updates (actualizare în timp real)
+          // ✅ Learn - Badge pentru learn updates
           NavigationDestination(
             icon: NotificationBadge(
-              showBadge: hasLearnNotifications, // 🔴 Bulină roșu când există notificări
+              showBadge: hasLearnNotifications,
               child: const Icon(Icons.school_outlined),
             ),
             selectedIcon: NotificationBadge(
