@@ -167,8 +167,8 @@ class NotificationService {
         'user_id': userId,
         'token': token,
         'device_info': {
-          'platform': 'android',
-          'updated_at': DateTime.now().toIso8601String(),
+        'platform': 'android',
+        'updated_at': DateTime.now().toIso8601String(),
         },
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'token');
