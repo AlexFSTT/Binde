@@ -546,10 +546,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // ✅ NOU: Determină dacă informațiile profilului sunt vizibile
+    final bool showProfileInfo = _relationshipStatus == 'friend';
+
     return Scaffold(
       appBar: AppBar(
         title: InkWell(
-          onTap: _openUserProfile,
+          // ✅ Dezactivează tap pe profil dacă nu sunt prieteni
+          onTap: showProfileInfo ? _openUserProfile : null,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -557,11 +561,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 tag: 'chat_avatar_${widget.conversation.getOtherParticipantId(_supabase.auth.currentUser!.id)}',
                 child: CircleAvatar(
                   radius: 16,
-                  backgroundColor: colorScheme.primaryContainer,
-                  backgroundImage: widget.conversation.otherUserAvatar != null
+                  backgroundColor: showProfileInfo
+                      ? colorScheme.primaryContainer
+                      : colorScheme.surfaceContainerHighest,
+                  // ✅ Ascunde poza de profil dacă nu sunt prieteni
+                  backgroundImage: showProfileInfo && widget.conversation.otherUserAvatar != null
                       ? NetworkImage(widget.conversation.otherUserAvatar!)
                       : null,
-                  child: widget.conversation.otherUserAvatar == null
+                  child: showProfileInfo && widget.conversation.otherUserAvatar == null
                       ? Text(
                           (widget.conversation.otherUserName ?? '?')[0].toUpperCase(),
                           style: TextStyle(
@@ -569,7 +576,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         )
-                      : null,
+                      : !showProfileInfo
+                          ? Icon(
+                              Icons.person,
+                              size: 18,
+                              color: colorScheme.onSurface.withValues(alpha: 0.4),
+                            )
+                          : null,
                 ),
               ),
               const SizedBox(width: 10),
@@ -584,8 +597,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    // Status sub-titlu
-                    _buildStatusSubtitle(colorScheme),
+                    // ✅ Ascunde statusul dacă nu sunt prieteni
+                    if (showProfileInfo)
+                      _buildStatusSubtitle(colorScheme),
                   ],
                 ),
               ),
@@ -729,30 +743,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   /// ✅ Banner: Celălalt user te-a blocat
+  /// ✅ Banner ROȘU: Celălalt user te-a blocat
   Widget _buildBlockedByBanner(ColorScheme colorScheme) {
     return Container(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
+        top: 16,
+        bottom: MediaQuery.of(context).padding.bottom + 16,
       ),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: colorScheme.errorContainer.withValues(alpha: 0.3),
         border: Border(
-          top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
+          top: BorderSide(color: colorScheme.error.withValues(alpha: 0.3)),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.info_outline, color: colorScheme.onSurface.withValues(alpha: 0.5), size: 18),
-          const SizedBox(width: 8),
+          Icon(Icons.block, color: colorScheme.error, size: 28),
+          const SizedBox(height: 8),
           Text(
-            'You can no longer send messages to this user',
+            'You have been blocked by this user',
             style: TextStyle(
-              color: colorScheme.onSurface.withValues(alpha: 0.5),
-              fontSize: 13,
+              color: colorScheme.error,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'You can no longer send messages or friend requests',
+            style: TextStyle(
+              color: colorScheme.error.withValues(alpha: 0.7),
+              fontSize: 12,
             ),
           ),
         ],

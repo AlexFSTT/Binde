@@ -135,11 +135,14 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
         ? DateTime.parse(_profileData!['created_at'] as String)
         : null;
 
+    // ✅ NOU: Ascunde info profil dacă nu sunt prieteni
+    final bool showFullProfile = _isFriend;
+
     return SingleChildScrollView(
       child: Column(
         children: [
           const SizedBox(height: 32),
-          // Avatar mare
+          // Avatar mare — generic dacă nu sunt prieteni
           Hero(
             tag: 'profile_avatar_${widget.userId}',
             child: Container(
@@ -147,7 +150,9 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.3),
+                    color: (showFullProfile 
+                        ? colorScheme.primary 
+                        : colorScheme.onSurface).withValues(alpha: 0.2),
                     blurRadius: 20,
                     offset: const Offset(0, 4),
                   ),
@@ -155,11 +160,14 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
               ),
               child: CircleAvatar(
                 radius: 80,
-                backgroundColor: colorScheme.primaryContainer,
-                backgroundImage: avatarUrl != null
+                backgroundColor: showFullProfile
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surfaceContainerHighest,
+                // ✅ Ascunde poza dacă nu sunt prieteni
+                backgroundImage: showFullProfile && avatarUrl != null
                     ? NetworkImage(avatarUrl)
                     : null,
-                child: avatarUrl == null
+                child: showFullProfile && avatarUrl == null
                     ? Text(
                         fullName[0].toUpperCase(),
                         style: TextStyle(
@@ -168,12 +176,18 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       )
-                    : null,
+                    : !showFullProfile
+                        ? Icon(
+                            Icons.person,
+                            size: 60,
+                            color: colorScheme.onSurface.withValues(alpha: 0.3),
+                          )
+                        : null,
               ),
             ),
           ),
           const SizedBox(height: 24),
-          // Numele
+          // Numele — se arată mereu
           Text(
             fullName,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -181,22 +195,54 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                 ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          // Card cu informații
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+
+          // ✅ NOU: Mesaj de status (blocat/deblocat)
+          if (_isBlocked) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Bio
-                    if (bio != null && bio.isNotEmpty) ...[
+              child: Text(
+                'Blocked',
+                style: TextStyle(
+                  color: colorScheme.error,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          if (!_isFriend && !_isBlocked) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Not in your friends list',
+              style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 13,
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 32),
+          // Card cu informații — doar dacă sunt prieteni
+          if (showFullProfile)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Bio
+                      if (bio != null && bio.isNotEmpty) ...[
                       Row(
                         children: [
                           Icon(

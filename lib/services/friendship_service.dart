@@ -29,10 +29,20 @@ class FriendshipService {
 
       final blocks = await _supabase
           .from('blocked_users')
-          .select('blocked_id')
-          .eq('blocker_id', currentUserId!);
+          .select('blocked_id, blocker_id')
+          .or('blocker_id.eq.$currentUserId,blocked_id.eq.$currentUserId');
 
-      final blockedIds = blocks.map((b) => b['blocked_id'] as String).toSet();
+      // ✅ MODIFICAT: Filtrăm userii pe care i-am blocat EU + userii care m-au blocat PE MINE
+      final blockedIds = <String>{};
+      for (final block in blocks) {
+        final blockerId = block['blocker_id'] as String;
+        final blockedId = block['blocked_id'] as String;
+        if (blockerId == currentUserId) {
+          blockedIds.add(blockedId); // EU am blocat pe altcineva
+        } else {
+          blockedIds.add(blockerId); // ALTCINEVA m-a blocat pe mine
+        }
+      }
 
       final existingRelations = <String>{};
       for (final friendship in friendships) {
@@ -62,11 +72,24 @@ class FriendshipService {
   }
 
 /// Trimite cerere de prietenie + declanșează push prin Edge Function
+/// ✅ VERIFICĂ dacă vreun block există (în ambele direcții)
 Future<bool> sendFriendRequest(String receiverId) async {
   final senderId = currentUserId;
   if (senderId == null) return false;
 
   try {
+    // ✅ NOU: Verifică dacă EU am blocat pe receiver SAU receiver m-a blocat pe mine
+    final blockCheck = await _supabase
+        .from('blocked_users')
+        .select('id')
+        .or('and(blocker_id.eq.$senderId,blocked_id.eq.$receiverId),and(blocker_id.eq.$receiverId,blocked_id.eq.$senderId)')
+        .maybeSingle();
+
+    if (blockCheck != null) {
+      debugPrint('⚠️ Cannot send friend request - block exists');
+      return false;
+    }
+
     // 1) Insert și ia friendshipId
     final inserted = await _supabase
         .from('friendships')
