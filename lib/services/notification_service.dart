@@ -40,6 +40,11 @@ class NotificationService {
 
   bool _initialized = false;
 
+  /// ✅ NOU: Tracking conversație activă
+  /// Când userul e în ChatDetailScreen, setăm conversation ID-ul aici
+  /// Pentru a suprima push notifications de la acea conversație
+  static String? activeConversationId;
+
   Future<void> initialize() async {
     if (_initialized) return;
 
@@ -138,6 +143,16 @@ class NotificationService {
   Future<void> _configureFCM() async {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('📨 Foreground notification: ${message.notification?.title}');
+      
+      // ✅ FIX: Nu arăta notificare dacă userul e deja în conversația respectivă
+      // Edge Function trimite 'conversation_id' (cu underscore) în data payload
+      final messageConversationId = message.data['conversation_id'] as String?;
+      if (messageConversationId != null && 
+          messageConversationId == activeConversationId) {
+        debugPrint('🔕 Suppressed notification - user is in this conversation');
+        return;
+      }
+      
       _showLocalNotification(message);
       _playSound();
       _vibrate();

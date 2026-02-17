@@ -5,6 +5,7 @@ import '../../models/conversation_model.dart';
 import '../../models/message_model.dart';
 import '../../services/chat_service.dart';
 import '../../services/presence_service.dart';
+import '../../services/notification_service.dart';
 import 'user_profile_view_screen.dart';
 import 'dart:async';
 
@@ -51,6 +52,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void initState() {
     super.initState();
     
+    // ✅ FIX: Setăm conversația activă - suprimă push notifications din această conversație
+    NotificationService.activeConversationId = widget.conversation.id;
+    
     _loadMessages();
     _setupRealtimeSubscription();
     _markMessagesAsRead();
@@ -63,6 +67,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    // ✅ FIX: Curățăm conversația activă - push notifications revin la normal
+    NotificationService.activeConversationId = null;
+    
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _scrollController.dispose();
