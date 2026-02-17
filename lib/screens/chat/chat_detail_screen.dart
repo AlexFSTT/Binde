@@ -693,234 +693,128 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   /// ✅ Banner: Tu ai blocat acest user
-  /// ✅ Banner stilizat: Tu ai blocat acest user
+  /// ✅ Banner compact: Tu ai blocat acest user
   Widget _buildBlockedBanner(ColorScheme colorScheme) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.15)),
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.error.withValues(alpha: 0.08),
-              colorScheme.error.withValues(alpha: 0.03),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colorScheme.error.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: colorScheme.error.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.block_rounded, color: colorScheme.error, size: 22),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'You blocked this user',
-              style: TextStyle(
-                color: colorScheme.error,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Messages are disabled while blocked',
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.45),
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _unblockFromChat,
-                icon: const Icon(Icons.lock_open_rounded, size: 17),
-                label: const Text('Unblock & Restore Friendship'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _buildStatusBanner(
+      colorScheme: colorScheme,
+      accentColor: colorScheme.error,
+      icon: Icons.block_rounded,
+      title: 'You blocked this user',
+      subtitle: 'Messages are disabled',
+      actionLabel: 'Unblock',
+      actionIcon: Icons.lock_open_rounded,
+      onAction: _unblockFromChat,
     );
   }
 
-  /// ✅ Banner stilizat ROȘU: Celălalt user te-a blocat
+  /// ✅ Banner compact: Celălalt user te-a blocat
   Widget _buildBlockedByBanner(ColorScheme colorScheme) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.15)),
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.error.withValues(alpha: 0.10),
-              colorScheme.error.withValues(alpha: 0.04),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colorScheme.error.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: colorScheme.error.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.block_rounded, color: colorScheme.error, size: 26),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'You have been blocked',
-              style: TextStyle(
-                color: colorScheme.error,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'You can no longer send messages\nor friend requests to this user',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.45),
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _buildStatusBanner(
+      colorScheme: colorScheme,
+      accentColor: colorScheme.error,
+      icon: Icons.block_rounded,
+      title: 'You have been blocked',
+      subtitle: 'You can\'t send messages or requests',
     );
   }
 
-  /// ✅ Banner stilizat: Nu mai sunteți prieteni + buton Friend Request
+  /// ✅ Banner compact: Nu mai sunteți prieteni
   Widget _buildUnfriendedBanner(ColorScheme colorScheme) {
+    return _buildStatusBanner(
+      colorScheme: colorScheme,
+      accentColor: Colors.orange,
+      icon: Icons.person_off_rounded,
+      title: 'You are no longer friends',
+      subtitle: 'Send a request to reconnect',
+      actionLabel: 'Add Friend',
+      actionIcon: Icons.person_add_rounded,
+      onAction: _sendFriendRequestFromChat,
+    );
+  }
+
+  /// ✅ Widget reutilizabil pentru toate bannerele
+  Widget _buildStatusBanner({
+    required ColorScheme colorScheme,
+    required Color accentColor,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    String? actionLabel,
+    IconData? actionIcon,
+    VoidCallback? onAction,
+  }) {
     return Container(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
+        left: 12,
+        right: 12,
+        top: 10,
+        bottom: MediaQuery.of(context).padding.bottom + 10,
       ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.15)),
+          top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.1)),
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.orange.withValues(alpha: 0.08),
-              Colors.orange.withValues(alpha: 0.02),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
+          color: accentColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.orange.withValues(alpha: 0.15),
+            color: accentColor.withValues(alpha: 0.1),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
+            // Icon mic circular
             Container(
-              width: 44,
-              height: 44,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
+                color: accentColor.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.person_off_rounded, color: Colors.orange[700], size: 22),
+              child: Icon(icon, color: accentColor, size: 17),
             ),
-            const SizedBox(height: 10),
-            Text(
-              'You are no longer friends',
-              style: TextStyle(
-                color: Colors.orange[800],
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Send a new request to reconnect',
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.45),
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _sendFriendRequestFromChat,
-                icon: const Icon(Icons.person_add_rounded, size: 17),
-                label: const Text('Send Friend Request'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            const SizedBox(width: 10),
+            // Texte
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: accentColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Buton (opțional)
+            if (actionLabel != null && onAction != null)
+              TextButton.icon(
+                onPressed: onAction,
+                icon: Icon(actionIcon, size: 15),
+                label: Text(actionLabel, style: const TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: colorScheme.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
-            ),
           ],
         ),
       ),
