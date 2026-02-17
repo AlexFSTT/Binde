@@ -6,6 +6,7 @@ import '../../models/message_model.dart';
 import '../../services/chat_service.dart';
 import '../../services/presence_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/friendship_service.dart';
 import 'user_profile_view_screen.dart';
 import 'dart:async';
 
@@ -29,6 +30,7 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ChatService _chatService = ChatService();
   final PresenceService _presenceService = PresenceService();
+  final FriendshipService _friendshipService = FriendshipService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -45,6 +47,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Timer? _typingTimer;
   Timer? _statusRefreshTimer;
 
+  // ✅ NOU: Status relație (friend/blocked/blocked_by/none)
+  String _relationshipStatus = 'friend'; // default friend - se actualizează async
+
   // Pentru Realtime
   RealtimeChannel? _channel;
 
@@ -60,6 +65,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _markMessagesAsRead();
     _loadUserStatus();
     _setupTypingListener();
+    _checkRelationshipStatus(); // ✅ NOU
     
     // Listener pentru când utilizatorul scrie
     _messageController.addListener(_onTextChanged);
@@ -317,6 +323,90 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  /// ✅ NOU: Verifică relația cu celălalt user
+  Future<void> _checkRelationshipStatus() async {
+    final otherUserId = widget.conversation.getOtherParticipantId(
+      _supabase.auth.currentUser!.id,
+    );
+
+    final status = await _friendshipService.getRelationshipStatus(otherUserId);
+
+    if (mounted) {
+      setState(() => _relationshipStatus = status);
+    }
+  }
+
+  /// ✅ NOU: Trimite cerere de prietenie din chat (după unfriend)
+  Future<void> _sendFriendRequestFromChat() async {
+    final otherUserId = widget.conversation.getOtherParticipantId(
+      _supabase.auth.currentUser!.id,
+    );
+
+    final success = await _friendshipService.sendFriendRequest(otherUserId);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Friend request sent!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // Re-verifică statusul (va fi 'pending' acum pe partea sender-ului,
+      // dar nu 'friend' până când receiver-ul acceptă)
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to send friend request'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// ✅ NOU: Unblock direct din chat
+  Future<void> _unblockFromChat() async {
+    final otherUserId = widget.conversation.getOtherParticipantId(
+      _supabase.auth.currentUser!.id,
+    );
+    final friendName = widget.conversation.otherUserName ?? 'this user';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unblock User'),
+        content: Text('Unblock $friendName and restore friendship?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Unblock'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _friendshipService.unblockUser(otherUserId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _relationshipStatus = 'friend');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$friendName unblocked! Friendship restored.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   /// Formatează timpul mesajului - WhatsApp style
   String _formatMessageTime(DateTime dateTime) {
     final now = DateTime.now();
@@ -336,6 +426,119 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       final day = dateTime.day.toString().padLeft(2, '0');
       final month = dateTime.month.toString().padLeft(2, '0');
       return '$day/$month $timeStr';
+    }
+  }
+
+  /// ✅ NOU: Confirmare Unfriend din chat
+  Future<void> _confirmUnfriend() async {
+    final otherUserId = widget.conversation.getOtherParticipantId(
+      _supabase.auth.currentUser!.id,
+    );
+    final friendName = widget.conversation.otherUserName ?? 'this user';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.person_remove, color: Colors.orange, size: 40),
+        title: const Text('Unfriend'),
+        content: Text(
+          'Are you sure you want to remove $friendName from your friends?\n\n'
+          'You can send a new friend request later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Unfriend'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _friendshipService.removeFriend(otherUserId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _relationshipStatus = 'none');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$friendName removed from friends'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to remove friend'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// ✅ NOU: Confirmare Block din chat
+  Future<void> _confirmBlock() async {
+    final colorScheme = Theme.of(context).colorScheme;
+    final otherUserId = widget.conversation.getOtherParticipantId(
+      _supabase.auth.currentUser!.id,
+    );
+    final friendName = widget.conversation.otherUserName ?? 'this user';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.block, color: colorScheme.error, size: 40),
+        title: const Text('Block User'),
+        content: Text(
+          'Are you sure you want to block $friendName?\n\n'
+          'This will:\n'
+          '• Remove them from your friends\n'
+          '• Prevent them from sending you messages\n'
+          '• Prevent them from sending friend requests\n\n'
+          'You can unblock them later from Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _friendshipService.blockUser(otherUserId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _relationshipStatus = 'blocked');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$friendName has been blocked'),
+          backgroundColor: colorScheme.error,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to block user'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -389,11 +592,218 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ],
           ),
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'unfriend':
+                  _confirmUnfriend();
+                  break;
+                case 'block':
+                  _confirmBlock();
+                  break;
+                case 'unblock':
+                  _unblockFromChat();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              // Unfriend - doar dacă sunt prieteni
+              if (_relationshipStatus == 'friend')
+                const PopupMenuItem(
+                  value: 'unfriend',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_remove, color: Colors.orange, size: 20),
+                      SizedBox(width: 12),
+                      Text('Unfriend'),
+                    ],
+                  ),
+                ),
+              // Block - dacă NU e deja blocat
+              if (_relationshipStatus != 'blocked')
+                PopupMenuItem(
+                  value: 'block',
+                  child: Row(
+                    children: [
+                      Icon(Icons.block, color: colorScheme.error, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Block user',
+                        style: TextStyle(color: colorScheme.error),
+                      ),
+                    ],
+                  ),
+                ),
+              // Unblock - doar dacă e blocat
+              if (_relationshipStatus == 'blocked')
+                PopupMenuItem(
+                  value: 'unblock',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_open, color: colorScheme.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Unblock user',
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(child: _buildMessagesList(colorScheme)),
-          _buildMessageInput(colorScheme),
+          _buildBottomBar(colorScheme),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ NOU: Bottom bar condițional pe baza relației
+  Widget _buildBottomBar(ColorScheme colorScheme) {
+    switch (_relationshipStatus) {
+      case 'blocked':
+        return _buildBlockedBanner(colorScheme);
+      case 'blocked_by':
+        return _buildBlockedByBanner(colorScheme);
+      case 'none':
+        return _buildUnfriendedBanner(colorScheme);
+      default: // 'friend'
+        return _buildMessageInput(colorScheme);
+    }
+  }
+
+  /// ✅ Banner: Tu ai blocat acest user
+  Widget _buildBlockedBanner(ColorScheme colorScheme) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer.withValues(alpha: 0.3),
+        border: Border(
+          top: BorderSide(color: colorScheme.error.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.block, color: colorScheme.error, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'You blocked this user',
+                style: TextStyle(
+                  color: colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _unblockFromChat,
+              icon: const Icon(Icons.lock_open, size: 18),
+              label: const Text('Unblock & Restore Friendship'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colorScheme.primary,
+                side: BorderSide(color: colorScheme.primary),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ Banner: Celălalt user te-a blocat
+  Widget _buildBlockedByBanner(ColorScheme colorScheme) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        border: Border(
+          top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.info_outline, color: colorScheme.onSurface.withValues(alpha: 0.5), size: 18),
+          const SizedBox(width: 8),
+          Text(
+            'You can no longer send messages to this user',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ Banner: Nu mai sunteți prieteni + buton Friend Request
+  Widget _buildUnfriendedBanner(ColorScheme colorScheme) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.08),
+        border: Border(
+          top: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.person_off, color: Colors.orange[700], size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'You are no longer friends',
+                style: TextStyle(
+                  color: Colors.orange[700],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _sendFriendRequestFromChat,
+              icon: const Icon(Icons.person_add, size: 18),
+              label: const Text('Send Friend Request'),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+              ),
+            ),
+          ),
         ],
       ),
     );

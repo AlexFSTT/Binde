@@ -6,6 +6,7 @@ import '../../providers/settings_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../main.dart';
 import 'edit_profile_screen.dart';
+import 'blocked_users_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -194,6 +195,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(context.tr('coming_soon'))),
+                        );
+                      },
+                    ),
+
+                    _buildProfileOption(
+                      context,
+                      icon: Icons.block,
+                      title: 'Blocked Users',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BlockedUsersScreen(),
+                          ),
                         );
                       },
                     ),

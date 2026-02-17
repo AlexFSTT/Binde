@@ -323,6 +323,7 @@ Future<bool> sendFriendRequest(String receiverId) async {
   }
 
   /// Blochează un user
+  /// ✅ Șterge prietenia + adaugă în blocked_users
   Future<bool> blockUser(String userId) async {
     if (currentUserId == null) return false;
 
@@ -344,21 +345,74 @@ Future<bool> sendFriendRequest(String receiverId) async {
   }
 
   /// Deblochează un user
+  /// ✅ MODIFICAT: Restaurează automat prietenia (status: accepted)
   Future<bool> unblockUser(String userId) async {
     if (currentUserId == null) return false;
 
     try {
+      // 1) Scoate din blocked_users
       await _supabase
           .from('blocked_users')
           .delete()
           .eq('blocker_id', currentUserId!)
           .eq('blocked_id', userId);
 
-      debugPrint('✅ User unblocked');
+      // 2) Restaurează prietenia
+      await _supabase.from('friendships').insert({
+        'sender_id': currentUserId,
+        'receiver_id': userId,
+        'status': 'accepted',
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint('✅ User unblocked + friendship restored');
       return true;
     } catch (e) {
       debugPrint('❌ Error unblocking user: $e');
       return false;
+    }
+  }
+
+  /// ✅ NOU: Verifică relația cu un alt user
+  /// Returnează: 'friend', 'blocked', 'blocked_by' (blocat de celălalt), sau 'none'
+  Future<String> getRelationshipStatus(String otherUserId) async {
+    if (currentUserId == null) return 'none';
+
+    try {
+      // Verifică dacă EU am blocat pe celălalt
+      final blockedByMe = await _supabase
+          .from('blocked_users')
+          .select('id')
+          .eq('blocker_id', currentUserId!)
+          .eq('blocked_id', otherUserId)
+          .maybeSingle();
+
+      if (blockedByMe != null) return 'blocked';
+
+      // Verifică dacă CELĂLALT m-a blocat pe mine
+      final blockedByOther = await _supabase
+          .from('blocked_users')
+          .select('id')
+          .eq('blocker_id', otherUserId)
+          .eq('blocked_id', currentUserId!)
+          .maybeSingle();
+
+      if (blockedByOther != null) return 'blocked_by';
+
+      // Verifică prietenia
+      final friendship = await _supabase
+          .from('friendships')
+          .select('id, status')
+          .eq('status', 'accepted')
+          .or('and(sender_id.eq.$currentUserId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$currentUserId)')
+          .maybeSingle();
+
+      if (friendship != null) return 'friend';
+
+      return 'none';
+    } catch (e) {
+      debugPrint('❌ Error checking relationship: $e');
+      return 'none';
     }
   }
 

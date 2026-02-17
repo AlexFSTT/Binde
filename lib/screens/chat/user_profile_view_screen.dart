@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/friendship_service.dart';
 
 /// Ecran pentru vizualizarea profilului unui utilizator
 /// Afișează informațiile publice ale utilizatorului
+/// ✅ NOU: Butoane Unfriend / Block
 class UserProfileViewScreen extends StatefulWidget {
   final String userId;
   final String? userName;
@@ -22,15 +24,35 @@ class UserProfileViewScreen extends StatefulWidget {
 
 class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final FriendshipService _friendshipService = FriendshipService();
   
   Map<String, dynamic>? _profileData;
   bool _isLoading = true;
+  bool _isFriend = false;
+  bool _isBlocked = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _checkRelationship();
+  }
+
+  /// Verifică dacă sunt prieteni sau blocați
+  Future<void> _checkRelationship() async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    final isFriend = await _friendshipService.areFriends(currentUserId, widget.userId);
+    final isBlocked = await _friendshipService.isBlocked(widget.userId);
+
+    if (mounted) {
+      setState(() {
+        _isFriend = isFriend;
+        _isBlocked = isBlocked;
+      });
+    }
   }
 
   /// Încarcă datele complete ale profilului
@@ -237,8 +259,187 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
               ),
             ),
           ),
+          // ✅ NOU: Butoane Unfriend / Block
+          if (_isFriend || _isBlocked) ...[
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  if (_isFriend) ...[
+                    // Unfriend
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _confirmUnfriend(fullName),
+                        icon: const Icon(Icons.person_remove, size: 20),
+                        label: Text(context.tr('unfriend')),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: const BorderSide(color: Colors.orange),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  // Block / Unblock
+                  SizedBox(
+                    width: double.infinity,
+                    child: _isBlocked
+                        ? OutlinedButton.icon(
+                            onPressed: () => _confirmUnblock(fullName),
+                            icon: const Icon(Icons.lock_open, size: 20),
+                            label: Text(context.tr('unblock_user')),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colorScheme.primary,
+                              side: BorderSide(color: colorScheme.primary),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: () => _confirmBlock(fullName),
+                            icon: const Icon(Icons.block, size: 20),
+                            label: Text(context.tr('block_user')),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colorScheme.error,
+                              side: BorderSide(color: colorScheme.error),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  /// ✅ NOU: Confirmare Unfriend
+  Future<void> _confirmUnfriend(String userName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.person_remove, color: Colors.orange, size: 40),
+        title: Text(context.tr('unfriend')),
+        content: Text(
+          'Are you sure you want to remove $userName from your friends?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            child: Text(context.tr('unfriend')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _friendshipService.removeFriend(widget.userId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _isFriend = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$userName removed from friends'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  /// ✅ NOU: Confirmare Block
+  Future<void> _confirmBlock(String userName) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.block, color: colorScheme.error, size: 40),
+        title: Text(context.tr('block_user')),
+        content: Text(
+          'Are you sure you want to block $userName?\n\n'
+          'This will remove them from your friends and prevent all contact.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+            child: Text(context.tr('block_user')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _friendshipService.blockUser(widget.userId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _isFriend = false;
+        _isBlocked = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('user_blocked')),
+          backgroundColor: colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  /// ✅ NOU: Confirmare Unblock
+  Future<void> _confirmUnblock(String userName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr('unblock_user')),
+        content: Text('Are you sure you want to unblock $userName?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.tr('unblock_user')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _friendshipService.unblockUser(widget.userId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _isBlocked = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('user_unblocked')),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 }

@@ -135,6 +135,190 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
     }
   }
 
+  /// ✅ NOU: Arată opțiuni pentru un prieten (Unfriend / Block)
+  void _showFriendOptions(FriendshipModel friend) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final friendName = friend.otherUserName ?? 'this user';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  friendName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Divider(),
+              // Unfriend
+              ListTile(
+                leading: const Icon(Icons.person_remove, color: Colors.orange),
+                title: const Text('Unfriend'),
+                subtitle: Text('Remove $friendName from your friends'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmUnfriend(friend);
+                },
+              ),
+              // Block
+              ListTile(
+                leading: Icon(Icons.block, color: colorScheme.error),
+                title: Text(
+                  'Block user',
+                  style: TextStyle(color: colorScheme.error),
+                ),
+                subtitle: Text('Block $friendName and remove from friends'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmBlock(friend);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ✅ NOU: Confirmare Unfriend
+  Future<void> _confirmUnfriend(FriendshipModel friend) async {
+    final friendName = friend.otherUserName ?? 'this user';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.person_remove, color: Colors.orange, size: 40),
+        title: const Text('Unfriend'),
+        content: Text(
+          'Are you sure you want to remove $friendName from your friends?\n\n'
+          'You can send a new friend request later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orange,
+            ),
+            child: const Text('Unfriend'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || friend.otherUserId == null) return;
+
+    final success = await _friendshipService.removeFriend(friend.otherUserId!);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _friends.removeWhere((f) => f.id == friend.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$friendName removed from friends'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to remove friend'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// ✅ NOU: Confirmare Block
+  Future<void> _confirmBlock(FriendshipModel friend) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    final friendName = friend.otherUserName ?? 'this user';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.block, color: colorScheme.error, size: 40),
+        title: const Text('Block User'),
+        content: Text(
+          'Are you sure you want to block $friendName?\n\n'
+          'This will:\n'
+          '• Remove them from your friends\n'
+          '• Prevent them from sending you messages\n'
+          '• Prevent them from sending friend requests\n\n'
+          'You can unblock them later from Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+            ),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || friend.otherUserId == null) return;
+
+    final success = await _friendshipService.blockUser(friend.otherUserId!);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _friends.removeWhere((f) => f.id == friend.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$friendName has been blocked'),
+          backgroundColor: colorScheme.error,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to block user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -255,6 +439,7 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: () => _openChatWithFriend(friend),
+        onLongPress: () => _showFriendOptions(friend),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
