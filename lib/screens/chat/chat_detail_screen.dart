@@ -65,6 +65,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // Pentru Realtime
   RealtimeChannel? _channel;
+  RealtimeChannel? _reactionsChannel;
 
   @override
   void initState() {
@@ -298,12 +299,76 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           },
         )
         .subscribe();
+
+    // Reactions realtime — listen for changes on message_reactions
+    _reactionsChannel = _supabase
+        .channel('reactions:${widget.conversation.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'message_reactions',
+          callback: (payload) {
+            final record = payload.eventType == PostgresChangeEvent.delete
+                ? payload.oldRecord
+                : payload.newRecord;
+            final messageId = record['message_id'] as String?;
+            if (messageId == null) return;
+
+            // Only refresh if message is in our conversation
+            final idx = _messages.indexWhere((m) => m.id == messageId);
+            if (idx >= 0) {
+              _refreshReactionsForMessage(messageId, idx);
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  /// Refresh reactions for a single message by re-fetching from DB
+  Future<void> _refreshReactionsForMessage(String messageId, int idx) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      final reactions = await _supabase
+          .from('message_reactions')
+          .select()
+          .eq('message_id', messageId);
+
+      final Map<String, int> counts = {};
+      String? myReaction;
+
+      for (final r in reactions) {
+        final type = r['reaction_type'] as String;
+        counts[type] = (counts[type] ?? 0) + 1;
+        if (r['user_id'] == currentUserId) {
+          myReaction = type;
+        }
+      }
+
+      final total = counts.values.fold(0, (a, b) => a + b);
+
+      if (mounted) {
+        setState(() {
+          _messages[idx] = _messages[idx].copyWith(
+            reactionCounts: counts,
+            totalReactions: total,
+            myReaction: myReaction,
+            clearMyReaction: myReaction == null,
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('Error refreshing reactions: $e');
+    }
   }
 
   void _removeRealtimeSubscription() {
     if (_channel != null) {
       _supabase.removeChannel(_channel!);
       _channel = null;
+    }
+    if (_reactionsChannel != null) {
+      _supabase.removeChannel(_reactionsChannel!);
+      _reactionsChannel = null;
     }
   }
 

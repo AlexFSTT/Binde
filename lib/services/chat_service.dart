@@ -329,10 +329,19 @@ class ChatService {
     final currentUserId = _supabase.auth.currentUser?.id;
     if (currentUserId == null) return;
 
+    // Get conversation_id before deleting
+    final msg = await _supabase
+        .from('messages')
+        .select('conversation_id')
+        .eq('id', messageId)
+        .single();
+
     await _supabase.from('message_deletions').upsert({
       'message_id': messageId,
       'user_id': currentUserId,
     });
+
+    await _refreshConversationLastMessage(msg['conversation_id'] as String);
   }
 
   /// Delete message for everyone (sender only)
@@ -341,10 +350,10 @@ class ChatService {
       final currentUserId = _supabase.auth.currentUser?.id;
       if (currentUserId == null) return false;
 
-      // Verify sender owns the message
+      // Verify sender owns the message + get conversation_id
       final msg = await _supabase
           .from('messages')
-          .select('sender_id')
+          .select('sender_id, conversation_id')
           .eq('id', messageId)
           .single();
 
@@ -355,10 +364,64 @@ class ChatService {
           .update({'deleted_for_everyone': true})
           .eq('id', messageId);
 
+      await _refreshConversationLastMessage(msg['conversation_id'] as String);
+
       return true;
     } catch (e) {
       debugPrint('Error deleting for everyone: $e');
       return false;
+    }
+  }
+
+  /// Update conversation last_message to the latest non-deleted message
+  Future<void> _refreshConversationLastMessage(String conversationId) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+
+      // Find the latest message that isn't deleted for everyone
+      final latest = await _supabase
+          .from('messages')
+          .select('content, created_at, id, message_type')
+          .eq('conversation_id', conversationId)
+          .eq('deleted_for_everyone', false)
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      if ((latest as List).isEmpty) {
+        // No messages left
+        await _supabase
+            .from('conversations')
+            .update({'last_message': '', 'last_message_at': DateTime.now().toIso8601String()})
+            .eq('id', conversationId);
+        return;
+      }
+
+      // Filter out messages deleted for current user
+      String? lastContent;
+      String? lastAt;
+      if (currentUserId != null) {
+        final deletedIds = await getDeletedMessageIds(conversationId);
+        for (final msg in latest) {
+          if (!deletedIds.contains(msg['id'] as String)) {
+            lastContent = msg['content'] as String?;
+            lastAt = msg['created_at'] as String?;
+            break;
+          }
+        }
+      }
+
+      lastContent ??= '';
+      lastAt ??= (latest as List).first['created_at'] as String;
+
+      await _supabase
+          .from('conversations')
+          .update({
+            'last_message': lastContent,
+            'last_message_at': lastAt,
+          })
+          .eq('id', conversationId);
+    } catch (e) {
+      debugPrint('Error refreshing conversation last message: $e');
     }
   }
 
