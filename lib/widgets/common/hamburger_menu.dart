@@ -275,7 +275,7 @@ Widget _buildCompactHeader(ColorScheme colorScheme) {
           
           // Version (nu se traduce)
           Text(
-            'Binde v0.4.0',
+            'Binde v0.5.0',
             style: TextStyle(
               fontSize: 10,
               color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -312,7 +312,7 @@ Widget _buildCompactHeader(ColorScheme colorScheme) {
             ),
             const SizedBox(height: 12),
             Text(
-              '${context.tr('version')}: v0.4.0', // ✅ TRADUS
+              '${context.tr('version')}: v0.5.0', // ✅ TRADUS
               style: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
