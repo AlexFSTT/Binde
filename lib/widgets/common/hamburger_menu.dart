@@ -89,7 +89,7 @@ class _HamburgerMenuState extends State<HamburgerMenu>
                   animation: _itemAnimations[1],
                   icon: Icons.person,
                   title: context.tr('profile'), // ✅ TRADUS
-                  color: colorScheme.secondary,
+                  color: colorScheme.primary,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -107,7 +107,7 @@ class _HamburgerMenuState extends State<HamburgerMenu>
                   animation: _itemAnimations[2],
                   icon: Icons.construction,
                   title: context.tr('tools'), // ✅ TRADUS
-                  color: colorScheme.tertiary,
+                  color: colorScheme.primary,
                   badge: context.tr('coming_soon'), // ✅ TRADUS
                   onTap: () {
                     Navigator.push(

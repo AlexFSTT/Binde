@@ -945,8 +945,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isMine
-                    ? colorScheme.primaryContainer.withValues(alpha: 0.9)
-                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
+                    ? colorScheme.primary.withValues(alpha: 0.22)
+                    : colorScheme.surfaceContainerHigh,
+                border: isMine
+                    ? Border.all(color: colorScheme.primary.withValues(alpha: 0.15))
+                    : Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -971,9 +974,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   Text(
                     message.content,
                     style: TextStyle(
-                      color: isMine
-                          ? colorScheme.onPrimaryContainer
-                          : colorScheme.onSurface,
+                      color: colorScheme.onSurface,
                       fontSize: 15,
                     ),
                   ),
@@ -983,8 +984,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     style: TextStyle(
                       fontSize: 11,
                       color: isMine
-                          ? colorScheme.onPrimaryContainer.withValues(alpha: 0.6)
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
+                          ? colorScheme.primary.withValues(alpha: 0.7)
+                          : colorScheme.onSurface.withValues(alpha: 0.45),
                     ),
                   ),
                 ],
