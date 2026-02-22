@@ -200,6 +200,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   onRefresh: _onRefresh,
                   child: ListView.builder(
                     controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.only(top: 4, bottom: 80),
                     itemCount: _posts.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {

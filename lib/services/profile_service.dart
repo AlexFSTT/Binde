@@ -23,12 +23,45 @@ class ProfileService {
     }
   }
 
-  /// Actualizează profilul utilizatorului
+  /// Obține profilul unui user specific
+  Future<Map<String, dynamic>?> getProfile(String userId) async {
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+
+      return response;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Actualizează profilul utilizatorului cu toate câmpurile
   Future<ProfileResult> updateProfile({
+    required String username,
     String? fullName,
     String? bio,
     String? avatarUrl,
-    required String username, // ✅ Parametru obligatoriu
+    String? coverUrl,
+    String? birthCity,
+    String? birthDate,
+    String? gender,
+    String? currentCity,
+    String? jobTitle,
+    String? jobCompany,
+    String? relationshipStatus,
+    String? relationshipPartner,
+    String? religion,
+    String? languages,
+    String? website,
+    String? school,
+    String? favoriteSports,
+    String? favoriteTeams,
+    String? favoriteGames,
+    String? phone,
+    String? contactVisibility,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -37,21 +70,38 @@ class ProfileService {
       }
 
       final updates = <String, dynamic>{
-        'id': userId, // ✅ ADĂUGAT pentru upsert
-        'username': username, // ✅ ADĂUGAT - ACESTA ERA PROBLEMA!
+        'id': userId,
+        'username': username,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
+      // Câmpuri de bază
       if (fullName != null) updates['full_name'] = fullName;
       if (bio != null) updates['bio'] = bio;
       if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+      if (coverUrl != null) updates['cover_url'] = coverUrl;
 
-      // ✅ SCHIMBAT de la .update() la .upsert() pentru consistență
-      await _supabase
-          .from('profiles')
-          .upsert(updates);
+      // Câmpuri noi
+      updates['birth_city'] = birthCity;
+      updates['birth_date'] = birthDate;
+      updates['gender'] = gender;
+      updates['current_city'] = currentCity;
+      updates['job_title'] = jobTitle;
+      updates['job_company'] = jobCompany;
+      updates['relationship_status'] = relationshipStatus;
+      updates['relationship_partner'] = relationshipPartner;
+      updates['religion'] = religion;
+      updates['languages'] = languages;
+      updates['website'] = website;
+      updates['school'] = school;
+      updates['favorite_sports'] = favoriteSports;
+      updates['favorite_teams'] = favoriteTeams;
+      updates['favorite_games'] = favoriteGames;
+      updates['phone'] = phone;
+      updates['contact_visibility'] = contactVisibility ?? 'friends';
 
-      // Actualizează și metadata din auth dacă s-a schimbat numele
+      await _supabase.from('profiles').upsert(updates);
+
       if (fullName != null) {
         await _supabase.auth.updateUser(
           UserAttributes(data: {'full_name': fullName}),
@@ -60,13 +110,12 @@ class ProfileService {
 
       return ProfileResult.success('Profil actualizat cu succes!');
     } catch (e) {
-      // ✅ ADĂUGAT: Error handling pentru username duplicat
-      if (e.toString().contains('duplicate key') || 
+      if (e.toString().contains('duplicate key') ||
           e.toString().contains('unique constraint') ||
           e.toString().contains('profiles_username_key')) {
         return ProfileResult.error('Username-ul este deja folosit. Alege altul.');
       }
-      
+
       return ProfileResult.error('Eroare la actualizare: $e');
     }
   }
@@ -83,20 +132,15 @@ class ProfileService {
       final fileExt = filePath.split('.').last.toLowerCase();
       final fileName = '$userId/avatar.$fileExt';
 
-      // Încarcă fișierul în Supabase Storage
       await _supabase.storage.from('avatars').upload(
         fileName,
         file,
         fileOptions: const FileOptions(upsert: true),
       );
 
-      // Obține URL-ul public
       final publicUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
-
-      // Adaugă timestamp pentru a forța reîncărcarea imaginii
       final urlWithTimestamp = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
 
-      // Actualizează profilul cu noul URL
       await _supabase
           .from('profiles')
           .update({'avatar_url': urlWithTimestamp, 'updated_at': DateTime.now().toIso8601String()})
@@ -108,6 +152,38 @@ class ProfileService {
     }
   }
 
+  /// Uploadează cover photo și returnează URL-ul
+  Future<ProfileResult> uploadCover(String filePath) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        return ProfileResult.error('Utilizatorul nu este autentificat.');
+      }
+
+      final file = File(filePath);
+      final fileExt = filePath.split('.').last.toLowerCase();
+      final fileName = '$userId/cover.$fileExt';
+
+      await _supabase.storage.from('covers').upload(
+        fileName,
+        file,
+        fileOptions: const FileOptions(upsert: true),
+      );
+
+      final publicUrl = _supabase.storage.from('covers').getPublicUrl(fileName);
+      final urlWithTimestamp = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      await _supabase
+          .from('profiles')
+          .update({'cover_url': urlWithTimestamp, 'updated_at': DateTime.now().toIso8601String()})
+          .eq('id', userId);
+
+      return ProfileResult.success(urlWithTimestamp);
+    } catch (e) {
+      return ProfileResult.error('Eroare la upload cover: $e');
+    }
+  }
+
   /// Șterge avatarul curent
   Future<ProfileResult> deleteAvatar() async {
     try {
@@ -116,16 +192,12 @@ class ProfileService {
         return ProfileResult.error('Utilizatorul nu este autentificat.');
       }
 
-      // Listează fișierele din folderul utilizatorului
       final files = await _supabase.storage.from('avatars').list(path: userId);
-
-      // Șterge toate fișierele (avatar-ul)
       if (files.isNotEmpty) {
         final paths = files.map((f) => '$userId/${f.name}').toList();
         await _supabase.storage.from('avatars').remove(paths);
       }
 
-      // Actualizează profilul - elimină URL-ul
       await _supabase
           .from('profiles')
           .update({'avatar_url': null, 'updated_at': DateTime.now().toIso8601String()})
@@ -134,6 +206,31 @@ class ProfileService {
       return ProfileResult.success('Avatar șters cu succes!');
     } catch (e) {
       return ProfileResult.error('Eroare la ștergere: $e');
+    }
+  }
+
+  /// Șterge cover photo
+  Future<ProfileResult> deleteCover() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        return ProfileResult.error('Utilizatorul nu este autentificat.');
+      }
+
+      final files = await _supabase.storage.from('covers').list(path: userId);
+      if (files.isNotEmpty) {
+        final paths = files.map((f) => '$userId/${f.name}').toList();
+        await _supabase.storage.from('covers').remove(paths);
+      }
+
+      await _supabase
+          .from('profiles')
+          .update({'cover_url': null, 'updated_at': DateTime.now().toIso8601String()})
+          .eq('id', userId);
+
+      return ProfileResult.success('Cover șters cu succes!');
+    } catch (e) {
+      return ProfileResult.error('Eroare la ștergere cover: $e');
     }
   }
 }

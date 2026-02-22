@@ -4,9 +4,10 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../models/post_model.dart';
 import '../../services/feed_service.dart';
 import '../../services/friendship_service.dart';
+import '../../services/profile_service.dart';
 import 'post_detail_screen.dart';
 
-/// Ecran cu postările unui user + header profil + friend request
+/// Ecran profil user cu postări (Facebook-like)
 class UserPostsScreen extends StatefulWidget {
   final String userId;
   final String userName;
@@ -26,6 +27,7 @@ class UserPostsScreen extends StatefulWidget {
 class _UserPostsScreenState extends State<UserPostsScreen> {
   final FeedService _feedService = FeedService();
   final FriendshipService _friendshipService = FriendshipService();
+  final ProfileService _profileService = ProfileService();
 
   List<PostModel> _posts = [];
   bool _isLoading = true;
@@ -33,13 +35,11 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   bool _hasMore = true;
 
   // Relationship
-  String _relationshipStatus = 'none'; // friend, blocked, blocked_by, none, pending
+  String _relationshipStatus = 'none';
   bool _isRelationshipLoading = true;
 
-  // Profile data
-  String? _bio;
-  String? _avatarUrl;
-  String _fullName = '';
+  // Full profile data
+  Map<String, dynamic>? _profile;
 
   bool get _isMe =>
       widget.userId == Supabase.instance.client.auth.currentUser?.id;
@@ -49,8 +49,6 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   @override
   void initState() {
     super.initState();
-    _fullName = widget.userName;
-    _avatarUrl = widget.userAvatar;
     _loadAll();
     _scrollController.addListener(_onScroll);
   }
@@ -80,19 +78,8 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
 
   Future<void> _loadProfile() async {
     try {
-      final profile = await Supabase.instance.client
-          .from('profiles')
-          .select('full_name, avatar_url, bio')
-          .eq('id', widget.userId)
-          .single();
-
-      if (mounted) {
-        setState(() {
-          _fullName = profile['full_name'] as String? ?? widget.userName;
-          _avatarUrl = profile['avatar_url'] as String? ?? widget.userAvatar;
-          _bio = profile['bio'] as String?;
-        });
-      }
+      final profile = await _profileService.getProfile(widget.userId);
+      if (mounted) setState(() => _profile = profile);
     } catch (_) {}
   }
 
@@ -103,13 +90,10 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     }
 
     try {
-      final status =
-          await _friendshipService.getRelationshipStatus(widget.userId);
+      final status = await _friendshipService.getRelationshipStatus(widget.userId);
 
-      // Also check for pending friend request
       if (status == 'none') {
-        final currentUserId =
-            Supabase.instance.client.auth.currentUser?.id;
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
         if (currentUserId != null) {
           final pending = await Supabase.instance.client
               .from('friendships')
@@ -141,8 +125,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
 
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
-    final posts =
-        await _feedService.getUserPosts(widget.userId, limit: 20, offset: 0);
+    final posts = await _feedService.getUserPosts(widget.userId, limit: 20, offset: 0);
     if (mounted) {
       setState(() {
         _posts = posts;
@@ -157,9 +140,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     setState(() => _isLoadingMore = true);
 
     final morePosts = await _feedService.getUserPosts(
-      widget.userId,
-      limit: 20,
-      offset: _posts.length,
+      widget.userId, limit: 20, offset: _posts.length,
     );
 
     if (mounted) {
@@ -186,77 +167,100 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     setState(() {
       _posts[index] = post.copyWith(
         isLikedByMe: !post.isLikedByMe,
-        likeCount:
-            post.isLikedByMe ? post.likeCount - 1 : post.likeCount + 1,
+        likeCount: post.isLikedByMe ? post.likeCount - 1 : post.likeCount + 1,
       );
     });
 
     final success = await _feedService.toggleLike(post.id);
-    if (!success && mounted) {
-      setState(() => _posts[index] = post);
-    }
+    if (!success && mounted) setState(() => _posts[index] = post);
   }
 
   void _openPostDetail(int index) async {
     final result = await Navigator.push<PostModel?>(
       context,
-      MaterialPageRoute(
-        builder: (_) => PostDetailScreen(post: _posts[index]),
-      ),
+      MaterialPageRoute(builder: (_) => PostDetailScreen(post: _posts[index])),
     );
-    if (result != null && mounted) {
-      setState(() => _posts[index] = result);
-    }
+    if (result != null && mounted) setState(() => _posts[index] = result);
+  }
+
+  String get _fullName => _profile?['full_name'] ?? widget.userName;
+  String? get _avatarUrl => _profile?['avatar_url'] ?? widget.userAvatar;
+  String? get _coverUrl => _profile?['cover_url'];
+  String? get _bio => _profile?['bio'];
+  bool get _showFullProfile => _isMe || _relationshipStatus == 'friend';
+
+  // Contact visibility check
+  bool get _canSeeContact {
+    final vis = _profile?['contact_visibility'] ?? 'friends';
+    if (vis == 'public') return true;
+    if (vis == 'friends' && _relationshipStatus == 'friend') return true;
+    if (_isMe) return true;
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final showFullProfile = _isMe || _relationshipStatus == 'friend';
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_fullName)),
       body: RefreshIndicator(
         onRefresh: _loadAll,
         child: CustomScrollView(
           controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Profile header
-            SliverToBoxAdapter(
-              child: _buildProfileHeader(colorScheme, showFullProfile),
+            // Custom app bar with cover
+            SliverAppBar(
+              expandedHeight: 200,
+              pinned: true,
+              title: Text(_fullName),
+              flexibleSpace: FlexibleSpaceBar(
+                background: _coverUrl != null && _showFullProfile
+                    ? Image.network(_coverUrl!, fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(color: cs.surfaceContainerHighest))
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              cs.primary.withValues(alpha: 0.3),
+                              cs.surfaceContainerHighest,
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
             ),
+
+            // Profile header
+            SliverToBoxAdapter(child: _buildProfileHeader(cs)),
 
             // Divider
             SliverToBoxAdapter(
-              child: Divider(
-                  color: colorScheme.outline.withValues(alpha: 0.1),
-                  height: 1),
+              child: Container(height: 8, color: cs.surfaceContainerHighest.withValues(alpha: 0.4)),
+            ),
+
+            // Posts section title
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text('Posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
+              ),
             ),
 
             // Posts
             if (_isLoading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              )
+              const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
             else if (_posts.isEmpty)
-              SliverFillRemaining(
-                child: Center(
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.article_outlined,
-                          size: 60,
-                          color:
-                              colorScheme.onSurface.withValues(alpha: 0.2)),
+                      Icon(Icons.article_outlined, size: 60, color: cs.onSurface.withValues(alpha: 0.15)),
                       const SizedBox(height: 12),
-                      Text(
-                        'No posts yet',
-                        style: TextStyle(
-                          color:
-                              colorScheme.onSurface.withValues(alpha: 0.4),
-                          fontSize: 16,
-                        ),
-                      ),
+                      Text('No posts yet', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35), fontSize: 16)),
                     ],
                   ),
                 ),
@@ -268,221 +272,314 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                     if (index == _posts.length) {
                       return const Padding(
                         padding: EdgeInsets.all(16),
-                        child: Center(
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2)),
+                        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                       );
                     }
-                    return _buildPostCard(index, colorScheme);
+                    return _buildPostCard(index, cs);
                   },
-                  childCount:
-                      _posts.length + (_isLoadingMore ? 1 : 0),
+                  childCount: _posts.length + (_isLoadingMore ? 1 : 0),
                 ),
               ),
+
+            // Bottom spacing
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(ColorScheme colorScheme, bool showFullProfile) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: showFullProfile
-                ? colorScheme.primaryContainer
-                : colorScheme.surfaceContainerHighest,
-            backgroundImage: showFullProfile && _avatarUrl != null
-                ? NetworkImage(_avatarUrl!)
-                : null,
-            child: showFullProfile && _avatarUrl == null
-                ? Text(
-                    _fullName[0].toUpperCase(),
-                    style: TextStyle(
-                      color: colorScheme.onPrimaryContainer,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : !showFullProfile
-                    ? Icon(Icons.person,
-                        size: 44,
-                        color: colorScheme.onSurface.withValues(alpha: 0.3))
-                    : null,
-          ),
-          const SizedBox(height: 12),
+  // =====================================================
+  // PROFILE HEADER (Facebook-like)
+  // =====================================================
 
-          // Nume
-          Text(
-            _fullName,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+  Widget _buildProfileHeader(ColorScheme cs) {
+    return Container(
+      color: cs.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar + Name + Relationship button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: cs.surface, width: 3),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6)],
+                  ),
+                  child: CircleAvatar(
+                    radius: 42,
+                    backgroundColor: _showFullProfile ? cs.primaryContainer : cs.surfaceContainerHighest,
+                    backgroundImage: _showFullProfile && _avatarUrl != null
+                        ? NetworkImage(_avatarUrl!)
+                        : null,
+                    child: _showFullProfile && _avatarUrl == null
+                        ? Text(_fullName[0].toUpperCase(),
+                            style: TextStyle(color: cs.onPrimaryContainer, fontSize: 32, fontWeight: FontWeight.bold))
+                        : !_showFullProfile
+                            ? Icon(Icons.person, size: 36, color: cs.onSurface.withValues(alpha: 0.25))
+                            : null,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      if (_profile?['username'] != null)
+                        Text('@${_profile!['username']}',
+                            style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.45))),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
           // Bio
-          if (showFullProfile && _bio != null && _bio!.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              _bio!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
-                fontSize: 14,
-              ),
+          if (_showFullProfile && _bio != null && _bio!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Text(_bio!, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.4)),
             ),
-          ],
 
           // Relationship button
-          if (!_isMe && !_isRelationshipLoading) ...[
-            const SizedBox(height: 16),
-            _buildRelationshipButton(colorScheme),
-          ],
+          if (!_isMe && !_isRelationshipLoading)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: _buildRelationshipButton(cs),
+            ),
+
+          // ====== DETAILS SECTION ======
+          if (_showFullProfile) _buildDetailsSection(cs),
+
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  Widget _buildRelationshipButton(ColorScheme colorScheme) {
+  // =====================================================
+  // DETAILS SECTION (Facebook-like)
+  // =====================================================
+
+  Widget _buildDetailsSection(ColorScheme cs) {
+    final details = <_DetailItem>[];
+
+    // Job
+    if (_profile?['job_title'] != null || _profile?['job_company'] != null) {
+      final job = [_profile?['job_title'], _profile?['job_company']]
+          .where((e) => e != null && e.toString().isNotEmpty)
+          .join(' at ');
+      if (job.isNotEmpty) details.add(_DetailItem(Icons.work_outline, job));
+    }
+
+    // School
+    if (_profile?['school'] != null && _profile!['school'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.school_outlined, _profile!['school']));
+    }
+
+    // Current city
+    if (_profile?['current_city'] != null && _profile!['current_city'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.location_on_outlined, 'Lives in ${_profile!['current_city']}'));
+    }
+
+    // Birth city
+    if (_profile?['birth_city'] != null && _profile!['birth_city'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.home_outlined, 'From ${_profile!['birth_city']}'));
+    }
+
+    // Relationship
+    if (_profile?['relationship_status'] != null && _profile!['relationship_status'].toString().isNotEmpty) {
+      String relText = _profile!['relationship_status'];
+      if (_profile?['relationship_partner'] != null && _profile!['relationship_partner'].toString().isNotEmpty) {
+        relText += ' with ${_profile!['relationship_partner']}';
+      }
+      details.add(_DetailItem(Icons.favorite_outline, relText));
+    }
+
+    // Religion
+    if (_profile?['religion'] != null && _profile!['religion'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.church_outlined, _profile!['religion']));
+    }
+
+    // Languages
+    if (_profile?['languages'] != null && _profile!['languages'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.translate, 'Speaks ${_profile!['languages']}'));
+    }
+
+    // Sports
+    if (_profile?['favorite_sports'] != null && _profile!['favorite_sports'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.sports_soccer_outlined, _profile!['favorite_sports']));
+    }
+
+    // Teams
+    if (_profile?['favorite_teams'] != null && _profile!['favorite_teams'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.shield_outlined, _profile!['favorite_teams']));
+    }
+
+    // Games
+    if (_profile?['favorite_games'] != null && _profile!['favorite_games'].toString().isNotEmpty) {
+      details.add(_DetailItem(Icons.sports_esports_outlined, _profile!['favorite_games']));
+    }
+
+    // Contact (respectă visibility)
+    if (_canSeeContact) {
+      if (_profile?['phone'] != null && _profile!['phone'].toString().isNotEmpty) {
+        details.add(_DetailItem(Icons.phone_outlined, _profile!['phone']));
+      }
+      if (_profile?['website'] != null && _profile!['website'].toString().isNotEmpty) {
+        details.add(_DetailItem(Icons.link, _profile!['website']));
+      }
+    }
+
+    if (details.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withValues(alpha: 0.7))),
+          const SizedBox(height: 10),
+          ...details.map((d) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(d.icon, size: 20, color: cs.onSurface.withValues(alpha: 0.4)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(d.text, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.3)),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // RELATIONSHIP BUTTON
+  // =====================================================
+
+  Widget _buildRelationshipButton(ColorScheme cs) {
     switch (_relationshipStatus) {
       case 'friend':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, size: 16, color: colorScheme.primary),
-              const SizedBox(width: 6),
-              Text(
-                'Friends',
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: null,
+            icon: Icon(Icons.check_circle, size: 18, color: cs.primary),
+            label: Text('Friends', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: cs.primary.withValues(alpha: 0.3)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+            ),
           ),
         );
 
       case 'pending':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.hourglass_top, size: 16, color: Colors.orange[700]),
-              const SizedBox(width: 6),
-              Text(
-                'Request sent',
-                style: TextStyle(
-                  color: Colors.orange[700],
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: null,
+            icon: Icon(Icons.hourglass_top, size: 18, color: Colors.orange[700]),
+            label: Text('Request sent', style: TextStyle(color: Colors.orange[700], fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+            ),
           ),
         );
 
       case 'blocked':
       case 'blocked_by':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: colorScheme.error.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.block, size: 16, color: colorScheme.error),
-              const SizedBox(width: 6),
-              Text(
-                'Blocked',
-                style: TextStyle(
-                  color: colorScheme.error,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: null,
+            icon: Icon(Icons.block, size: 18, color: cs.error),
+            label: Text('Blocked', style: TextStyle(color: cs.error, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: cs.error.withValues(alpha: 0.3)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+            ),
           ),
         );
 
       case 'none':
       default:
-        return FilledButton.icon(
-          onPressed: _sendFriendRequest,
-          icon: const Icon(Icons.person_add, size: 18),
-          label: const Text('Add Friend'),
-          style: FilledButton.styleFrom(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+        return SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _sendFriendRequest,
+            icon: const Icon(Icons.person_add, size: 18),
+            label: const Text('Add Friend'),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ),
         );
     }
   }
 
-  Widget _buildPostCard(int index, ColorScheme colorScheme) {
+  // =====================================================
+  // POST CARD (cu spațiu între ele)
+  // =====================================================
+
+  Widget _buildPostCard(int index, ColorScheme cs) {
     final post = _posts[index];
     final currentUserId = _feedService.currentUserId;
 
     return Container(
-      margin: const EdgeInsets.only(top: 0.5),
-      color: colorScheme.surface,
+      margin: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+      color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Content
-          if (post.content.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Text(
-                post.content,
-                style: const TextStyle(fontSize: 15, height: 1.4),
-              ),
-            ),
-
           // Timp + visibility
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
               children: [
                 Text(
                   timeago.format(post.createdAt),
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.4),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4), fontSize: 12),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 Icon(
-                  post.visibility == 'friends'
-                      ? Icons.people_outline
-                      : Icons.public,
-                  size: 13,
-                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                  post.visibility == 'friends' ? Icons.people_outline : Icons.public,
+                  size: 14,
+                  color: cs.onSurface.withValues(alpha: 0.3),
                 ),
+                const Spacer(),
+                // Delete (doar dacă e al meu)
+                if (post.userId == currentUserId)
+                  GestureDetector(
+                    onTap: () => _confirmDelete(index),
+                    child: Icon(Icons.more_horiz, size: 20, color: cs.onSurface.withValues(alpha: 0.35)),
+                  ),
               ],
             ),
           ),
+
+          // Content
+          if (post.content.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(post.content, style: const TextStyle(fontSize: 15, height: 1.4)),
+            ),
 
           // Imagine
           if (post.imageUrl != null) ...[
@@ -494,7 +591,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                 child: Image.network(
                   post.imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox(height: 0),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
                 ),
               ),
             ),
@@ -509,36 +606,17 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                   if (post.likeCount > 0) ...[
                     Icon(Icons.favorite, size: 15, color: Colors.red[400]),
                     const SizedBox(width: 4),
-                    Text(
-                      '${post.likeCount}',
-                      style: TextStyle(
-                        color:
-                            colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text('${post.likeCount}', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 12)),
                   ],
-                  if (post.likeCount > 0 && post.commentCount > 0)
-                    const Spacer(),
+                  if (post.likeCount > 0 && post.commentCount > 0) const Spacer(),
                   if (post.commentCount > 0)
-                    Text(
-                      '${post.commentCount} comment${post.commentCount == 1 ? '' : 's'}',
-                      style: TextStyle(
-                        color:
-                            colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text('${post.commentCount} comment${post.commentCount == 1 ? '' : 's'}',
+                        style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 12)),
                 ],
               ),
             ),
 
-          Divider(
-            indent: 16,
-            endIndent: 16,
-            height: 1,
-            color: colorScheme.outline.withValues(alpha: 0.1),
-          ),
+          Divider(indent: 16, endIndent: 16, height: 1, color: cs.outline.withValues(alpha: 0.08)),
 
           // Actions
           Row(
@@ -547,79 +625,24 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                 child: TextButton.icon(
                   onPressed: () => _toggleLike(index),
                   icon: Icon(
-                    post.isLikedByMe
-                        ? Icons.favorite
-                        : Icons.favorite_border,
+                    post.isLikedByMe ? Icons.favorite : Icons.favorite_border,
                     size: 19,
-                    color: post.isLikedByMe
-                        ? Colors.red[400]
-                        : colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45),
                   ),
-                  label: Text(
-                    'Like',
-                    style: TextStyle(
-                      color: post.isLikedByMe
-                          ? Colors.red[400]
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                  ),
+                  label: Text('Like',
+                      style: TextStyle(
+                        color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45),
+                        fontSize: 13,
+                      )),
                 ),
               ),
               Expanded(
                 child: TextButton.icon(
                   onPressed: () => _openPostDetail(index),
-                  icon: Icon(
-                    Icons.chat_bubble_outline,
-                    size: 19,
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                  label: Text(
-                    'Comment',
-                    style: TextStyle(
-                      color:
-                          colorScheme.onSurface.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                  ),
+                  icon: Icon(Icons.chat_bubble_outline, size: 19, color: cs.onSurface.withValues(alpha: 0.45)),
+                  label: Text('Comment', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
                 ),
               ),
-              // Delete (doar dacă e al meu)
-              if (post.userId == currentUserId)
-                IconButton(
-                  onPressed: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete post?'),
-                        content:
-                            const Text('This action cannot be undone.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text('Delete',
-                                style: TextStyle(
-                                    color: colorScheme.error)),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      final success =
-                          await _feedService.deletePost(post.id);
-                      if (success && mounted) {
-                        setState(() => _posts.removeAt(index));
-                      }
-                    }
-                  },
-                  icon: Icon(Icons.delete_outline,
-                      size: 19,
-                      color: colorScheme.onSurface.withValues(alpha: 0.3)),
-                ),
             ],
           ),
           const SizedBox(height: 2),
@@ -627,4 +650,32 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
       ),
     );
   }
+
+  Future<void> _confirmDelete(int index) async {
+    final post = _posts[index];
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete post?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final success = await _feedService.deletePost(post.id);
+      if (success && mounted) setState(() => _posts.removeAt(index));
+    }
+  }
+}
+
+class _DetailItem {
+  final IconData icon;
+  final String text;
+  const _DetailItem(this.icon, this.text);
 }
