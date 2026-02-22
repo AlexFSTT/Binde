@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/conversation_model.dart';
 import '../../models/message_model.dart';
@@ -39,6 +40,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final PresenceService _presenceService = PresenceService();
   final FriendshipService _friendshipService = FriendshipService();
   final TextEditingController _messageController = TextEditingController();
+  final FocusNode _messageFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -47,6 +49,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isSending = false;
   String? _error;
   bool _showAttachMenu = false;
+  bool _showEmojiPicker = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   // Pentru status
@@ -87,6 +90,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
+    _messageFocusNode.dispose();
     _scrollController.dispose();
     _removeRealtimeSubscription();
     _typingTimer?.cancel();
@@ -1185,6 +1189,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _toggleEmojiPicker() {
+    if (_showEmojiPicker) {
+      // Close emoji, open keyboard
+      setState(() => _showEmojiPicker = false);
+      _messageFocusNode.requestFocus();
+    } else {
+      // Close keyboard, open emoji
+      _messageFocusNode.unfocus();
+      setState(() {
+        _showEmojiPicker = true;
+        _showAttachMenu = false;
+      });
+    }
+  }
+
+  void _onEmojiSelected(Category? category, Emoji emoji) {
+    final text = _messageController.text;
+    final selection = _messageController.selection;
+    final cursor = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+    final newText = text.substring(0, cursor) + emoji.emoji + text.substring(cursor);
+    _messageController.text = newText;
+    final newCursor = cursor + emoji.emoji.length;
+    _messageController.selection = TextSelection.collapsed(offset: newCursor);
+  }
+
   Widget _buildMessageInput(ColorScheme colorScheme) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1226,14 +1255,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             left: 6,
             right: 6,
             top: 6,
-            bottom: MediaQuery.of(context).padding.bottom + 6,
+            bottom: _showEmojiPicker ? 6 : MediaQuery.of(context).padding.bottom + 6,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Attach button
               IconButton(
-                onPressed: () => setState(() => _showAttachMenu = !_showAttachMenu),
+                onPressed: () => setState(() {
+                  _showAttachMenu = !_showAttachMenu;
+                  _showEmojiPicker = false;
+                }),
                 icon: AnimatedRotation(
                   turns: _showAttachMenu ? 0.125 : 0,
                   duration: const Duration(milliseconds: 200),
@@ -1249,13 +1281,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 constraints: const BoxConstraints(),
               ),
 
-              // Text field — clean, no background
+              // Text field with emoji button inside
               Expanded(
                 child: TextField(
                   controller: _messageController,
+                  focusNode: _messageFocusNode,
                   maxLines: 4,
                   minLines: 1,
                   textCapitalization: TextCapitalization.sentences,
+                  onTap: () {
+                    if (_showEmojiPicker) {
+                      setState(() => _showEmojiPicker = false);
+                    }
+                  },
                   decoration: InputDecoration(
                     hintText: context.tr('type_message'),
                     hintStyle: TextStyle(
@@ -1281,11 +1319,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         width: 1.5,
                       ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                    contentPadding: const EdgeInsets.only(
+                      left: 16,
+                      right: 4,
+                      top: 10,
+                      bottom: 10,
                     ),
                     isDense: true,
+                    // Emoji button inside the text field
+                    suffixIcon: IconButton(
+                      onPressed: _toggleEmojiPicker,
+                      icon: Icon(
+                        _showEmojiPicker
+                            ? Icons.keyboard_rounded
+                            : Icons.emoji_emotions_outlined,
+                        color: _showEmojiPicker
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withValues(alpha: 0.45),
+                        size: 24,
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(),
+                    ),
                   ),
                 ),
               ),
@@ -1321,6 +1376,67 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ],
           ),
         ),
+
+        // Emoji picker (replaces keyboard)
+        if (_showEmojiPicker)
+          SizedBox(
+            height: 280,
+            child: EmojiPicker(
+              onEmojiSelected: _onEmojiSelected,
+              onBackspacePressed: () {
+                final text = _messageController.text;
+                if (text.isNotEmpty) {
+                  // Handle emoji characters (multi-codeunit)
+                  final selection = _messageController.selection;
+                  final cursor = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+                  if (cursor > 0) {
+                    final characters = text.characters.toList();
+                    // Find which character index the cursor is at
+                    int charIdx = 0;
+                    int codeUnitCount = 0;
+                    for (final ch in characters) {
+                      codeUnitCount += ch.length;
+                      charIdx++;
+                      if (codeUnitCount >= cursor) break;
+                    }
+                    if (charIdx > 0) {
+                      characters.removeAt(charIdx - 1);
+                      final newText = characters.join();
+                      _messageController.text = newText;
+                      final newCursor = newText.length < cursor
+                          ? newText.length
+                          : cursor - (text.length - newText.length);
+                      _messageController.selection =
+                          TextSelection.collapsed(offset: newCursor.clamp(0, newText.length));
+                    }
+                  }
+                }
+              },
+              config: Config(
+                height: 280,
+                checkPlatformCompatibility: true,
+                emojiViewConfig: EmojiViewConfig(
+                  columns: 8,
+                  emojiSizeMax: 28.0 * (Platform.isIOS ? 1.2 : 1.0),
+                  backgroundColor: colorScheme.surface,
+                ),
+                categoryViewConfig: CategoryViewConfig(
+                  backgroundColor: colorScheme.surface,
+                  indicatorColor: colorScheme.primary,
+                  iconColorSelected: colorScheme.primary,
+                  iconColor: colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+                bottomActionBarConfig: const BottomActionBarConfig(
+                  showBackspaceButton: true,
+                  showSearchViewButton: true,
+                ),
+                searchViewConfig: SearchViewConfig(
+                  backgroundColor: colorScheme.surface,
+                  buttonIconColor: colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
