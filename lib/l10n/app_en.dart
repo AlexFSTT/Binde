@@ -261,4 +261,11 @@ const Map<String, String> en = {
   // Errors
   'error_unknown': 'Unknown error',
   'error_connection': 'Connection error',
+  // Reactions & Shares
+  'share': 'Share',
+  'shares': 'shares',
+  'shared': 'Shared',
+  'preview': 'Preview',
+  'react': 'React',
+
 };

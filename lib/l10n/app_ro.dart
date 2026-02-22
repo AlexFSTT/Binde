@@ -261,4 +261,11 @@ const Map<String, String> ro = {
   // Errors
   'error_unknown': 'Eroare necunoscută',
   'error_connection': 'Eroare de conexiune',
+  // Reactions & Shares
+  'share': 'Distribuie',
+  'shares': 'distribuiri',
+  'shared': 'Distribuit',
+  'preview': 'Previzualizare',
+  'react': 'Reacție',
+
 };

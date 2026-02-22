@@ -12,10 +12,15 @@ class PostModel {
   final String? authorName;
   final String? authorAvatar;
 
-  // Contoare
-  final int likeCount;
+  // Reactions (like, haha, angry, heart, sad)
+  final Map<String, int> reactionCounts; // {'like': 5, 'heart': 2, ...}
+  final int totalReactions;
+  final String? myReaction; // null = no reaction, 'like', 'haha', etc.
+
+  // Comments & Shares
   final int commentCount;
-  final bool isLikedByMe;
+  final int shareCount;
+  final bool isSharedByMe;
 
   PostModel({
     required this.id,
@@ -27,15 +32,25 @@ class PostModel {
     required this.updatedAt,
     this.authorName,
     this.authorAvatar,
-    this.likeCount = 0,
+    this.reactionCounts = const {},
+    this.totalReactions = 0,
+    this.myReaction,
     this.commentCount = 0,
-    this.isLikedByMe = false,
+    this.shareCount = 0,
+    this.isSharedByMe = false,
   });
 
+  // Backward compat
+  int get likeCount => totalReactions;
+  bool get isLikedByMe => myReaction != null;
+
   factory PostModel.fromJson(Map<String, dynamic> json, {
-    int likeCount = 0,
+    Map<String, int> reactionCounts = const {},
+    int totalReactions = 0,
+    String? myReaction,
     int commentCount = 0,
-    bool isLikedByMe = false,
+    int shareCount = 0,
+    bool isSharedByMe = false,
   }) {
     final author = json['author'] as Map<String, dynamic>?;
 
@@ -49,16 +64,23 @@ class PostModel {
       updatedAt: DateTime.parse(json['updated_at'] as String),
       authorName: author?['full_name'] as String?,
       authorAvatar: author?['avatar_url'] as String?,
-      likeCount: likeCount,
+      reactionCounts: reactionCounts,
+      totalReactions: totalReactions,
+      myReaction: myReaction,
       commentCount: commentCount,
-      isLikedByMe: isLikedByMe,
+      shareCount: shareCount,
+      isSharedByMe: isSharedByMe,
     );
   }
 
   PostModel copyWith({
-    int? likeCount,
+    Map<String, int>? reactionCounts,
+    int? totalReactions,
+    String? myReaction,
+    bool clearMyReaction = false,
     int? commentCount,
-    bool? isLikedByMe,
+    int? shareCount,
+    bool? isSharedByMe,
     String? content,
     String? imageUrl,
     String? visibility,
@@ -73,10 +95,46 @@ class PostModel {
       updatedAt: updatedAt,
       authorName: authorName,
       authorAvatar: authorAvatar,
-      likeCount: likeCount ?? this.likeCount,
+      reactionCounts: reactionCounts ?? this.reactionCounts,
+      totalReactions: totalReactions ?? this.totalReactions,
+      myReaction: clearMyReaction ? null : (myReaction ?? this.myReaction),
       commentCount: commentCount ?? this.commentCount,
-      isLikedByMe: isLikedByMe ?? this.isLikedByMe,
+      shareCount: shareCount ?? this.shareCount,
+      isSharedByMe: isSharedByMe ?? this.isSharedByMe,
     );
+  }
+}
+
+/// Tipuri de reacții disponibile
+class ReactionType {
+  static const String like = 'like';
+  static const String haha = 'haha';
+  static const String angry = 'angry';
+  static const String heart = 'heart';
+  static const String sad = 'sad';
+
+  static const List<String> all = [like, heart, haha, sad, angry];
+
+  static String emoji(String type) {
+    switch (type) {
+      case like: return '👍';
+      case haha: return '😂';
+      case angry: return '😡';
+      case heart: return '❤️';
+      case sad: return '😢';
+      default: return '👍';
+    }
+  }
+
+  static String label(String type) {
+    switch (type) {
+      case like: return 'Like';
+      case haha: return 'Haha';
+      case angry: return 'Angry';
+      case heart: return 'Heart';
+      case sad: return 'Sad';
+      default: return 'Like';
+    }
   }
 }
 
@@ -88,7 +146,6 @@ class CommentModel {
   final String content;
   final DateTime createdAt;
 
-  // Date join din profiles
   final String? authorName;
   final String? authorAvatar;
 

@@ -7,7 +7,7 @@ import '../../services/chat_service.dart';
 import '../../services/presence_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/friendship_service.dart';
-import 'user_profile_view_screen.dart';
+import '../feed/user_posts_screen.dart';
 import 'dart:async';
 
 /// Ecran pentru chat 1-la-1 între utilizatorul curent și un alt utilizator
@@ -314,9 +314,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserProfileViewScreen(
+        builder: (context) => UserPostsScreen(
           userId: otherUserId,
-          userName: widget.conversation.otherUserName,
+          userName: widget.conversation.otherUserName ?? 'User',
           userAvatar: widget.conversation.otherUserAvatar,
         ),
       ),

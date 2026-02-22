@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/post_model.dart';
 
-/// Service pentru Feed - CRUD posts, likes, comments
+/// Service pentru Feed - CRUD posts, reactions, comments, shares
 class FeedService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -14,7 +14,6 @@ class FeedService {
   // =====================================================
 
   /// Încarcă postări pentru feed (paginat)
-  /// RLS se ocupă de visibility + block filtering
   Future<List<PostModel>> getFeedPosts({
     int limit = 20,
     int offset = 0,
@@ -59,49 +58,86 @@ class FeedService {
     }
   }
 
-  /// Helper: adaugă like count, comment count, isLikedByMe
+  /// Helper: adaugă reaction counts, comment counts, share counts
   Future<List<PostModel>> _enrichPostsWithCounts(List<dynamic> posts) async {
     if (posts.isEmpty) return [];
 
     final postIds = posts.map((p) => p['id'] as String).toList();
 
-    // Like counts per post
-    final likeCounts = <String, int>{};
-    final myLikes = <String>{};
+    // Reaction counts per post (grouped by reaction_type)
+    final reactionCounts = <String, Map<String, int>>{};
+    final totalReactions = <String, int>{};
+    final myReactions = <String, String>{};
 
-    final likesData = await _supabase
-        .from('post_likes')
-        .select('post_id, user_id')
-        .inFilter('post_id', postIds);
+    try {
+      final likesData = await _supabase
+          .from('post_likes')
+          .select('post_id, user_id, reaction_type')
+          .inFilter('post_id', postIds);
 
-    for (final like in likesData) {
-      final postId = like['post_id'] as String;
-      likeCounts[postId] = (likeCounts[postId] ?? 0) + 1;
-      if (like['user_id'] == currentUserId) {
-        myLikes.add(postId);
+      for (final like in likesData) {
+        final postId = like['post_id'] as String;
+        final type = like['reaction_type'] as String? ?? 'like';
+
+        reactionCounts.putIfAbsent(postId, () => {});
+        reactionCounts[postId]![type] = (reactionCounts[postId]![type] ?? 0) + 1;
+        totalReactions[postId] = (totalReactions[postId] ?? 0) + 1;
+
+        if (like['user_id'] == currentUserId) {
+          myReactions[postId] = type;
+        }
       }
+    } catch (e) {
+      debugPrint('⚠️ Error loading reactions: $e');
     }
 
     // Comment counts per post
     final commentCounts = <String, int>{};
+    try {
+      final commentsData = await _supabase
+          .from('post_comments')
+          .select('post_id')
+          .inFilter('post_id', postIds);
 
-    final commentsData = await _supabase
-        .from('post_comments')
-        .select('post_id')
-        .inFilter('post_id', postIds);
+      for (final comment in commentsData) {
+        final postId = comment['post_id'] as String;
+        commentCounts[postId] = (commentCounts[postId] ?? 0) + 1;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error loading comment counts: $e');
+    }
 
-    for (final comment in commentsData) {
-      final postId = comment['post_id'] as String;
-      commentCounts[postId] = (commentCounts[postId] ?? 0) + 1;
+    // Share counts per post
+    final shareCounts = <String, int>{};
+    final myShares = <String>{};
+    try {
+      final sharesData = await _supabase
+          .from('post_shares')
+          .select('post_id, user_id')
+          .inFilter('post_id', postIds);
+
+      for (final share in sharesData) {
+        final postId = share['post_id'] as String;
+        shareCounts[postId] = (shareCounts[postId] ?? 0) + 1;
+        if (share['user_id'] == currentUserId) {
+          myShares.add(postId);
+        }
+      }
+    } catch (e) {
+      // post_shares table might not exist yet
+      debugPrint('⚠️ Shares table not available: $e');
     }
 
     return posts.map((json) {
       final postId = json['id'] as String;
       return PostModel.fromJson(
         json as Map<String, dynamic>,
-        likeCount: likeCounts[postId] ?? 0,
+        reactionCounts: reactionCounts[postId] ?? {},
+        totalReactions: totalReactions[postId] ?? 0,
+        myReaction: myReactions[postId],
         commentCount: commentCounts[postId] ?? 0,
-        isLikedByMe: myLikes.contains(postId),
+        shareCount: shareCounts[postId] ?? 0,
+        isSharedByMe: myShares.contains(postId),
       );
     }).toList();
   }
@@ -117,7 +153,6 @@ class FeedService {
     try {
       String? imageUrl;
 
-      // Upload imagine dacă există
       if (imageFile != null) {
         final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
         final storagePath = '$currentUserId/$fileName';
@@ -153,11 +188,10 @@ class FeedService {
     }
   }
 
-  /// Șterge o postare (doar propria)
+  /// Șterge o postare
   Future<bool> deletePost(String postId) async {
     try {
       await _supabase.from('posts').delete().eq('id', postId);
-      debugPrint('✅ Post deleted');
       return true;
     } catch (e) {
       debugPrint('❌ Error deleting post: $e');
@@ -166,41 +200,93 @@ class FeedService {
   }
 
   // =====================================================
-  // LIKES
+  // REACTIONS
   // =====================================================
 
-  /// Toggle like pe o postare
+  /// Set reaction (or remove if same type)
+  /// Returns the new reaction type (null if removed)
+  Future<String?> setReaction(String postId, String reactionType) async {
+    if (currentUserId == null) return null;
+
+    try {
+      // Check existing reaction
+      final existing = await _supabase
+          .from('post_likes')
+          .select('id, reaction_type')
+          .eq('post_id', postId)
+          .eq('user_id', currentUserId!)
+          .maybeSingle();
+
+      if (existing != null) {
+        if (existing['reaction_type'] == reactionType) {
+          // Same reaction → remove
+          await _supabase
+              .from('post_likes')
+              .delete()
+              .eq('post_id', postId)
+              .eq('user_id', currentUserId!);
+          return null;
+        } else {
+          // Different reaction → update
+          await _supabase
+              .from('post_likes')
+              .update({'reaction_type': reactionType})
+              .eq('post_id', postId)
+              .eq('user_id', currentUserId!);
+          return reactionType;
+        }
+      } else {
+        // No reaction → insert
+        await _supabase.from('post_likes').insert({
+          'post_id': postId,
+          'user_id': currentUserId,
+          'reaction_type': reactionType,
+        });
+        return reactionType;
+      }
+    } catch (e) {
+      debugPrint('❌ Error setting reaction: $e');
+      return null;
+    }
+  }
+
+  /// Quick like toggle (backward compat)
   Future<bool> toggleLike(String postId) async {
+    final result = await setReaction(postId, 'like');
+    return true;
+  }
+
+  // =====================================================
+  // SHARES
+  // =====================================================
+
+  /// Toggle share on a post
+  Future<bool> toggleShare(String postId) async {
     if (currentUserId == null) return false;
 
     try {
-      // Verifică dacă am dat deja like
       final existing = await _supabase
-          .from('post_likes')
+          .from('post_shares')
           .select('id')
           .eq('post_id', postId)
           .eq('user_id', currentUserId!)
           .maybeSingle();
 
       if (existing != null) {
-        // Unlike
         await _supabase
-            .from('post_likes')
+            .from('post_shares')
             .delete()
             .eq('post_id', postId)
             .eq('user_id', currentUserId!);
-        debugPrint('👎 Unliked post');
       } else {
-        // Like
-        await _supabase.from('post_likes').insert({
+        await _supabase.from('post_shares').insert({
           'post_id': postId,
           'user_id': currentUserId,
         });
-        debugPrint('👍 Liked post');
       }
       return true;
     } catch (e) {
-      debugPrint('❌ Error toggling like: $e');
+      debugPrint('❌ Error toggling share: $e');
       return false;
     }
   }
@@ -209,7 +295,6 @@ class FeedService {
   // COMMENTS
   // =====================================================
 
-  /// Încarcă comentariile unei postări
   Future<List<CommentModel>> getComments(String postId) async {
     try {
       final response = await _supabase
@@ -230,7 +315,6 @@ class FeedService {
     }
   }
 
-  /// Adaugă un comentariu
   Future<CommentModel?> addComment(String postId, String content) async {
     if (currentUserId == null) return null;
 
@@ -248,7 +332,6 @@ class FeedService {
           ''')
           .single();
 
-      debugPrint('✅ Comment added');
       return CommentModel.fromJson(response);
     } catch (e) {
       debugPrint('❌ Error adding comment: $e');
@@ -256,11 +339,9 @@ class FeedService {
     }
   }
 
-  /// Șterge un comentariu (doar propriul)
   Future<bool> deleteComment(String commentId) async {
     try {
       await _supabase.from('post_comments').delete().eq('id', commentId);
-      debugPrint('✅ Comment deleted');
       return true;
     } catch (e) {
       debugPrint('❌ Error deleting comment: $e');

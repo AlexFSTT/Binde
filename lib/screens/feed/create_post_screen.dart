@@ -2,10 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import '../../services/feed_service.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Ecran pentru crearea unei postări noi
+/// Ecran pentru crearea unei postări noi — cu preview live
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
 
@@ -19,10 +20,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final ImagePicker _picker = ImagePicker();
 
   File? _selectedImage;
-  String _visibility = 'public'; // 'public' sau 'friends'
+  String _visibility = 'public';
   bool _isPosting = false;
 
-  // Datele userului curent
   String? _myName;
   String? _myAvatar;
 
@@ -30,6 +30,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void initState() {
     super.initState();
     _loadMyProfile();
+    _contentController.addListener(() => setState(() {}));
   }
 
   @override
@@ -65,9 +66,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       maxHeight: 1080,
       imageQuality: 85,
     );
-
     if (picked != null && mounted) {
       setState(() => _selectedImage = File(picked.path));
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    // Placeholder — video picking (future feature)
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('coming_soon'))),
+      );
     }
   }
 
@@ -86,7 +95,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   Future<void> _submitPost() async {
     if (!_canPost || _isPosting) return;
-
     setState(() => _isPosting = true);
 
     final post = await _feedService.createPost(
@@ -97,7 +105,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     if (mounted) {
       setState(() => _isPosting = false);
-
       if (post != null) {
         Navigator.pop(context, post);
       } else {
@@ -113,7 +120,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -124,8 +131,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             child: FilledButton(
               onPressed: _canPost && !_isPosting ? _submitPost : null,
               style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               ),
               child: _isPosting
                   ? const SizedBox(
@@ -147,176 +153,158 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header: avatar + nume + visibility
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: colorScheme.primaryContainer,
-                        backgroundImage: _myAvatar != null
-                            ? NetworkImage(_myAvatar!)
-                            : null,
-                        child: _myAvatar == null
-                            ? Text(
-                                (_myName ?? '?')[0].toUpperCase(),
-                                style: TextStyle(
-                                  color: colorScheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _myName ?? 'You',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          // Visibility picker
-                          InkWell(
-                            onTap: _toggleVisibility,
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _visibility == 'public'
-                                        ? Icons.public
-                                        : Icons.people,
-                                    size: 14,
-                                    color: colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _visibility == 'public'
-                                        ? 'Public'
-                                        : 'Friends',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Icon(
-                                    Icons.arrow_drop_down,
-                                    size: 16,
-                                    color: colorScheme.onSurface
-                                        .withValues(alpha: 0.4),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  // Header: avatar + name + visibility
+                  _buildUserHeader(cs),
 
                   const SizedBox(height: 16),
 
-                  // Text input
-                  TextField(
-                    controller: _contentController,
-                    maxLines: null,
-                    minLines: 4,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: context.tr('whats_on_your_mind'),
-                      hintStyle: TextStyle(
-                        color: colorScheme.onSurface.withValues(alpha: 0.35),
-                        fontSize: 18,
-                      ),
-                      border: InputBorder.none,
-                    ),
-                    style: const TextStyle(fontSize: 18),
-                    onChanged: (_) => setState(() {}),
-                  ),
+                  // Text input + media toolbar in one container
+                  _buildInputBox(cs),
 
-                  // Preview imagine
-                  if (_selectedImage != null) ...[
-                    const SizedBox(height: 12),
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _selectedImage!,
-                            width: double.infinity,
-                            height: 250,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: GestureDetector(
-                            onTap: _removeImage,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 18),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  const SizedBox(height: 20),
+
+                  // Live preview
+                  if (_contentController.text.trim().isNotEmpty || _selectedImage != null)
+                    _buildLivePreview(cs),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // Bottom toolbar
-          Container(
-            padding: EdgeInsets.only(
-              left: 8,
-              right: 8,
-              top: 8,
-              bottom: MediaQuery.of(context).padding.bottom + 8,
+  Widget _buildUserHeader(ColorScheme cs) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: cs.primaryContainer,
+          backgroundImage: _myAvatar != null ? NetworkImage(_myAvatar!) : null,
+          child: _myAvatar == null
+              ? Text(
+                  (_myName ?? '?')[0].toUpperCase(),
+                  style: TextStyle(
+                    color: cs.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _myName ?? 'You',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
             ),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: 0.1)),
+            const SizedBox(height: 2),
+            InkWell(
+              onTap: _toggleVisibility,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _visibility == 'public' ? Icons.public : Icons.people,
+                      size: 14,
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _visibility == 'public'
+                          ? context.tr('post_public')
+                          : context.tr('post_friends'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 16,
+                      color: cs.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ],
+                ),
               ),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputBox(ColorScheme cs) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: cs.outline.withValues(alpha: 0.15),
+        ),
+        color: cs.surfaceContainerLowest,
+      ),
+      child: Column(
+        children: [
+          // Text input
+          TextField(
+            controller: _contentController,
+            maxLines: null,
+            minLines: 4,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: context.tr('whats_on_your_mind'),
+              hintStyle: TextStyle(
+                color: cs.onSurface.withValues(alpha: 0.35),
+                fontSize: 17,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+            ),
+            style: const TextStyle(fontSize: 17),
+          ),
+
+          // Thin divider
+          Divider(
+            height: 1,
+            color: cs.outline.withValues(alpha: 0.1),
+            indent: 14,
+            endIndent: 14,
+          ),
+
+          // Media toolbar (image + video icons)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(
               children: [
-                // Adaugă imagine
+                // Photo picker
                 IconButton(
                   onPressed: _pickImage,
-                  icon: Icon(Icons.image_outlined,
-                      color: Colors.green[600], size: 26),
+                  icon: Icon(Icons.image_outlined, color: Colors.green[600], size: 24),
                   tooltip: context.tr('add_photo'),
+                  splashRadius: 22,
+                ),
+                // Video picker
+                IconButton(
+                  onPressed: _pickVideo,
+                  icon: Icon(Icons.videocam_outlined, color: Colors.red[400], size: 24),
+                  tooltip: 'Video',
+                  splashRadius: 22,
                 ),
                 const Spacer(),
-                // Visibility indicator
+                // Visibility pill
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -324,15 +312,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     children: [
                       Icon(
                         _visibility == 'public' ? Icons.public : Icons.people,
-                        size: 15,
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                        size: 14,
+                        color: cs.onSurface.withValues(alpha: 0.5),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        _visibility == 'public' ? 'Public' : 'Friends only',
+                        _visibility == 'public'
+                            ? context.tr('post_public')
+                            : context.tr('post_friends_only'),
                         style: TextStyle(
                           fontSize: 12,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: cs.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -343,6 +333,176 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLivePreview(ColorScheme cs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Preview label
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            context.tr('preview'),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface.withValues(alpha: 0.4),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+
+        // Preview card (mimics feed post card)
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: cs.primaryContainer,
+                      backgroundImage:
+                          _myAvatar != null ? NetworkImage(_myAvatar!) : null,
+                      child: _myAvatar == null
+                          ? Text(
+                              (_myName ?? '?')[0].toUpperCase(),
+                              style: TextStyle(
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _myName ?? 'You',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              timeago.format(DateTime.now()),
+                              style: TextStyle(
+                                color: cs.onSurface.withValues(alpha: 0.45),
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _visibility == 'friends'
+                                  ? Icons.people_outline
+                                  : Icons.public,
+                              size: 12,
+                              color: cs.onSurface.withValues(alpha: 0.35),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Text content
+              if (_contentController.text.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: Text(
+                    _contentController.text.trim(),
+                    style: const TextStyle(fontSize: 14, height: 1.4),
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+
+              // Image preview
+              if (_selectedImage != null)
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                      child: Image.file(
+                        _selectedImage!,
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: _removeImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,
+                              color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+              // Fake action bar
+              if (_selectedImage == null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.thumb_up_outlined,
+                          size: 16, color: cs.onSurface.withValues(alpha: 0.25)),
+                      const SizedBox(width: 6),
+                      Text(context.tr('like'),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurface.withValues(alpha: 0.25))),
+                      const SizedBox(width: 20),
+                      Icon(Icons.chat_bubble_outline,
+                          size: 16, color: cs.onSurface.withValues(alpha: 0.25)),
+                      const SizedBox(width: 6),
+                      Text(context.tr('comment'),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurface.withValues(alpha: 0.25))),
+                      const SizedBox(width: 20),
+                      Icon(Icons.share_outlined,
+                          size: 16, color: cs.onSurface.withValues(alpha: 0.25)),
+                      const SizedBox(width: 6),
+                      Text(context.tr('share'),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurface.withValues(alpha: 0.25))),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
