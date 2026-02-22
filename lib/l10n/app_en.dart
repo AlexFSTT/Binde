@@ -268,4 +268,9 @@ const Map<String, String> en = {
   'preview': 'Preview',
   'react': 'React',
 
+  // Chat media
+  'photo': 'Photo',
+  'file': 'File',
+  'sending_media': 'Sending...',
+
 };

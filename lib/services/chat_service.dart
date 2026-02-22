@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/conversation_model.dart';
 import 'package:flutter/foundation.dart';
@@ -191,6 +192,85 @@ class ChatService {
       );
     } catch (e) {
       debugPrint('Error sending message: $e');
+      rethrow;
+    }
+  }
+
+  /// Trimite un mesaj cu atașament (imagine, video, fișier)
+  Future<Message> sendMediaMessage({
+    required String conversationId,
+    required File file,
+    required MessageType messageType,
+    String? caption,
+  }) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) throw Exception('User not authenticated');
+
+      // 1. Upload file to storage
+      final ext = file.path.split('.').last.toLowerCase();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final storagePath = '$currentUserId/$conversationId/$fileName';
+      final fileSize = await file.length();
+      final originalName = file.path.split('/').last;
+
+      await _supabase.storage
+          .from('chat-attachments')
+          .upload(storagePath, file);
+
+      final attachmentUrl = _supabase.storage
+          .from('chat-attachments')
+          .getPublicUrl(storagePath);
+
+      // 2. Build content preview
+      String content;
+      if (caption != null && caption.trim().isNotEmpty) {
+        content = caption.trim();
+      } else {
+        switch (messageType) {
+          case MessageType.image: content = '📷 Photo'; break;
+          case MessageType.video: content = '🎥 Video'; break;
+          case MessageType.file: content = '📎 $originalName'; break;
+          default: content = '📎 Attachment';
+        }
+      }
+
+      // 3. Insert message
+      final messageResponse = await _supabase
+          .from('messages')
+          .insert({
+            'conversation_id': conversationId,
+            'sender_id': currentUserId,
+            'content': content,
+            'message_type': messageType.value,
+            'attachment_url': attachmentUrl,
+            'file_name': originalName,
+            'file_size': fileSize,
+          })
+          .select('''
+            *,
+            sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)
+          ''')
+          .single();
+
+      // 4. Update conversation
+      await _supabase
+          .from('conversations')
+          .update({
+            'last_message': content,
+            'last_message_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', conversationId);
+
+      final message = Message.fromJson(messageResponse);
+      final sender = messageResponse['sender'];
+
+      return message.copyWith(
+        senderName: sender['full_name'] as String?,
+        senderAvatar: sender['avatar_url'] as String?,
+      );
+    } catch (e) {
+      debugPrint('❌ Error sending media message: $e');
       rethrow;
     }
   }

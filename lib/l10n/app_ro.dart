@@ -268,4 +268,9 @@ const Map<String, String> ro = {
   'preview': 'Previzualizare',
   'react': 'Reacție',
 
+  // Chat media
+  'photo': 'Foto',
+  'file': 'Fișier',
+  'sending_media': 'Se trimite...',
+
 };

@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/conversation_model.dart';
 import '../../models/message_model.dart';
@@ -39,6 +42,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   String? _error;
+  bool _showAttachMenu = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   // Pentru status
   bool _isOnline = false;
@@ -293,6 +298,68 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         _isSending = false;
       });
+    }
+  }
+
+  // =====================================================
+  // MEDIA PICKING & SENDING
+  // =====================================================
+
+  Future<void> _pickAndSendImage() async {
+    setState(() => _showAttachMenu = false);
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1080,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    await _sendMediaFile(File(picked.path), MessageType.image);
+  }
+
+  Future<void> _pickAndSendVideo() async {
+    setState(() => _showAttachMenu = false);
+    final picked = await _imagePicker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(minutes: 5),
+    );
+    if (picked == null) return;
+    await _sendMediaFile(File(picked.path), MessageType.video);
+  }
+
+  Future<void> _pickAndSendFile() async {
+    setState(() => _showAttachMenu = false);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null) return;
+    await _sendMediaFile(File(path), MessageType.file);
+  }
+
+  Future<void> _sendMediaFile(File file, MessageType type) async {
+    setState(() => _isSending = true);
+    try {
+      await _chatService.sendMediaMessage(
+        conversationId: widget.conversation.id,
+        file: file,
+        messageType: type,
+      );
+      widget.onMessageSent?.call();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.tr('error')}: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -939,10 +1006,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
             const SizedBox(width: 8),
           ],
-          // Balonul cu mesajul - DESIGN NOU STILIZAT
+          // Balonul cu mesajul
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: isMine
                     ? colorScheme.primary.withValues(alpha: 0.22)
@@ -971,21 +1038,42 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 15,
+                  // Media content
+                  if (message.messageType == MessageType.image && message.attachmentUrl != null)
+                    _buildImageBubble(message, colorScheme)
+                  else if (message.messageType == MessageType.video && message.attachmentUrl != null)
+                    _buildVideoBubble(message, colorScheme)
+                  else if (message.messageType == MessageType.file && message.attachmentUrl != null)
+                    _buildFileBubble(message, isMine, colorScheme),
+
+                  // Text content (or caption for media)
+                  if (message.messageType == MessageType.text ||
+                      (message.content.isNotEmpty &&
+                       !message.content.startsWith('📷') &&
+                       !message.content.startsWith('🎥') &&
+                       !message.content.startsWith('📎')))
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                      child: Text(
+                        message.content,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatMessageTime(message.createdAt),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isMine
-                          ? colorScheme.primary.withValues(alpha: 0.7)
-                          : colorScheme.onSurface.withValues(alpha: 0.45),
+
+                  // Timestamp
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                    child: Text(
+                      _formatMessageTime(message.createdAt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isMine
+                            ? colorScheme.primary.withValues(alpha: 0.7)
+                            : colorScheme.onSurface.withValues(alpha: 0.45),
+                      ),
                     ),
                   ),
                 ],
@@ -999,71 +1087,322 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  Widget _buildMessageInput(ColorScheme colorScheme) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 8,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
+  Widget _buildImageBubble(Message message, ColorScheme colorScheme) {
+    return GestureDetector(
+      onTap: () => _showFullImage(message.attachmentUrl!),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260, maxHeight: 300),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(17),
+            topRight: Radius.circular(17),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              maxLines: 4,
-              minLines: 1,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: context.tr('type_message'),
-                filled: true,
-                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+          child: Image.network(
+            message.attachmentUrl!,
+            fit: BoxFit.cover,
+            width: 260,
+            loadingBuilder: (_, child, progress) {
+              if (progress == null) return child;
+              return SizedBox(
+                height: 150,
+                width: 260,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: progress.expectedTotalBytes != null
+                        ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                        : null,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
+              );
+            },
+            errorBuilder: (_, _, _) => SizedBox(
+              height: 100,
+              width: 260,
+              child: Center(
+                child: Icon(Icons.broken_image_outlined,
+                    size: 40, color: colorScheme.onSurface.withValues(alpha: 0.3)),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoBubble(Message message, ColorScheme colorScheme) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
           Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: IconButton(
-              onPressed: _isSending ? null : _sendMessage,
-              icon: _isSending
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colorScheme.onPrimary,
-                      ),
-                    )
-                  : Icon(
-                      Icons.send,
-                      color: colorScheme.onPrimary,
+            child: const Icon(Icons.play_circle_fill, color: Colors.red, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.fileName ?? 'Video',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (message.fileSize != null)
+                  Text(
+                    message.formattedFileSize,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
+                  ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFileBubble(Message message, bool isMine, ColorScheme colorScheme) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.insert_drive_file, color: Colors.blue, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.fileName ?? 'File',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (message.fileSize != null)
+                  Text(
+                    message.formattedFileSize,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullImage(String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.network(url),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageInput(ColorScheme colorScheme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Thin separator
+        Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+
+        // Attach menu (expandable)
+        if (_showAttachMenu)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                _buildAttachOption(
+                  icon: Icons.image_outlined,
+                  label: context.tr('photo'),
+                  color: Colors.green[600]!,
+                  onTap: _pickAndSendImage,
+                ),
+                _buildAttachOption(
+                  icon: Icons.videocam_outlined,
+                  label: 'Video',
+                  color: Colors.red[400]!,
+                  onTap: _pickAndSendVideo,
+                ),
+                _buildAttachOption(
+                  icon: Icons.insert_drive_file_outlined,
+                  label: context.tr('file'),
+                  color: Colors.blue[400]!,
+                  onTap: _pickAndSendFile,
+                ),
+              ],
+            ),
+          ),
+
+        // Input row
+        Padding(
+          padding: EdgeInsets.only(
+            left: 6,
+            right: 6,
+            top: 6,
+            bottom: MediaQuery.of(context).padding.bottom + 6,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Attach button
+              IconButton(
+                onPressed: () => setState(() => _showAttachMenu = !_showAttachMenu),
+                icon: AnimatedRotation(
+                  turns: _showAttachMenu ? 0.125 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.add_circle_outline,
+                    color: _showAttachMenu
+                        ? colorScheme.primary
+                        : colorScheme.onSurface.withValues(alpha: 0.5),
+                    size: 26,
+                  ),
+                ),
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(),
+              ),
+
+              // Text field — clean, no background
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  maxLines: 4,
+                  minLines: 1,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: context.tr('type_message'),
+                    hintStyle: TextStyle(
+                      color: colorScheme.onSurface.withValues(alpha: 0.35),
+                    ),
+                    filled: false,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide(
+                        color: colorScheme.primary.withValues(alpha: 0.5),
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    isDense: true,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 4),
+
+              // Send button
+              Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: _isSending ? null : _sendMessage,
+                  icon: _isSending
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colorScheme.onPrimary,
+                          ),
+                        )
+                      : Icon(
+                          Icons.send,
+                          color: colorScheme.onPrimary,
+                          size: 20,
+                        ),
+                  padding: const EdgeInsets.all(10),
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttachOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: color),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
