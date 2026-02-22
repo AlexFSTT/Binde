@@ -164,15 +164,29 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
 
   Future<void> _toggleLike(int index) async {
     final post = _posts[index];
+    final oldReaction = post.myReaction;
+    final isRemove = oldReaction == 'like';
+
+    final newCounts = Map<String, int>.from(post.reactionCounts);
+    if (oldReaction != null) {
+      newCounts[oldReaction] = (newCounts[oldReaction] ?? 1) - 1;
+      if (newCounts[oldReaction]! <= 0) newCounts.remove(oldReaction);
+    }
+    if (!isRemove) {
+      newCounts['like'] = (newCounts['like'] ?? 0) + 1;
+    }
+    final newTotal = newCounts.values.fold(0, (a, b) => a + b);
+
     setState(() {
       _posts[index] = post.copyWith(
-        isLikedByMe: !post.isLikedByMe,
-        likeCount: post.isLikedByMe ? post.likeCount - 1 : post.likeCount + 1,
+        myReaction: isRemove ? null : 'like',
+        clearMyReaction: isRemove,
+        reactionCounts: newCounts,
+        totalReactions: newTotal,
       );
     });
 
-    final success = await _feedService.toggleLike(post.id);
-    if (!success && mounted) setState(() => _posts[index] = post);
+    await _feedService.setReaction(post.id, 'like');
   }
 
   void _openPostDetail(int index) async {
@@ -668,17 +682,20 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           ],
 
           // Counts
-          if (post.likeCount > 0 || post.commentCount > 0)
+          if (post.totalReactions > 0 || post.commentCount > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
               child: Row(
                 children: [
-                  if (post.likeCount > 0) ...[
-                    Icon(Icons.favorite, size: 15, color: Colors.red[400]),
+                  if (post.totalReactions > 0) ...[
+                    if (post.myReaction != null)
+                      Text(ReactionType.emoji(post.myReaction!), style: const TextStyle(fontSize: 14))
+                    else
+                      Icon(Icons.thumb_up, size: 15, color: Colors.blue[400]),
                     const SizedBox(width: 4),
-                    Text('${post.likeCount}', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 12)),
+                    Text('${post.totalReactions}', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 12)),
                   ],
-                  if (post.likeCount > 0 && post.commentCount > 0) const Spacer(),
+                  if (post.totalReactions > 0 && post.commentCount > 0) const Spacer(),
                   if (post.commentCount > 0)
                     Text('${post.commentCount} ${post.commentCount == 1 ? context.tr('comment_singular') : context.tr('comment_plural')}',
                         style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 12)),
@@ -694,13 +711,13 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
               Expanded(
                 child: TextButton.icon(
                   onPressed: () => _toggleLike(index),
-                  icon: Icon(
-                    post.isLikedByMe ? Icons.favorite : Icons.favorite_border,
-                    size: 19,
-                    color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45),
-                  ),
-                  label: Text(context.tr('like'), style: TextStyle(
-                    color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
+                  icon: post.myReaction != null
+                      ? Text(ReactionType.emoji(post.myReaction!), style: const TextStyle(fontSize: 17))
+                      : Icon(Icons.thumb_up_outlined, size: 19, color: cs.onSurface.withValues(alpha: 0.45)),
+                  label: Text(
+                    post.myReaction != null ? ReactionType.label(post.myReaction!) : context.tr('like'),
+                    style: TextStyle(
+                    color: post.myReaction != null ? Colors.blue : cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
                 ),
               ),
               Expanded(

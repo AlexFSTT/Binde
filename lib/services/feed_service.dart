@@ -252,7 +252,7 @@ class FeedService {
 
   /// Quick like toggle (backward compat)
   Future<bool> toggleLike(String postId) async {
-    final result = await setReaction(postId, 'like');
+    await setReaction(postId, 'like');
     return true;
   }
 

@@ -51,20 +51,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
-  Future<void> _toggleLike() async {
+  Future<void> _setReaction(String reactionType) async {
+    final oldReaction = _post.myReaction;
+    final isRemove = oldReaction == reactionType;
+
+    final newCounts = Map<String, int>.from(_post.reactionCounts);
+    if (oldReaction != null) {
+      newCounts[oldReaction] = (newCounts[oldReaction] ?? 1) - 1;
+      if (newCounts[oldReaction]! <= 0) newCounts.remove(oldReaction);
+    }
+    if (!isRemove) {
+      newCounts[reactionType] = (newCounts[reactionType] ?? 0) + 1;
+    }
+    final newTotal = newCounts.values.fold(0, (a, b) => a + b);
+
     setState(() {
       _post = _post.copyWith(
-        isLikedByMe: !_post.isLikedByMe,
-        likeCount: _post.isLikedByMe
-            ? _post.likeCount - 1
-            : _post.likeCount + 1,
+        myReaction: isRemove ? null : reactionType,
+        clearMyReaction: isRemove,
+        reactionCounts: newCounts,
+        totalReactions: newTotal,
       );
     });
 
-    final success = await _feedService.toggleLike(_post.id);
-    if (!success && mounted) {
-      setState(() => _post = widget.post);
-    }
+    await _feedService.setReaction(_post.id, reactionType);
   }
 
   Future<void> _sendComment() async {
@@ -294,16 +304,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ],
 
-          // Like count + action
+          // Reaction count + comments
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
               children: [
-                if (_post.likeCount > 0) ...[
-                  Icon(Icons.favorite, size: 16, color: Colors.red[400]),
+                if (_post.totalReactions > 0) ...[
+                  // Stacked emoji badges
+                  ...() {
+                    final sorted = _post.reactionCounts.entries.toList()
+                      ..sort((a, b) => b.value.compareTo(a.value));
+                    return sorted.take(3).map((e) =>
+                      Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: Text(ReactionType.emoji(e.key), style: const TextStyle(fontSize: 14)),
+                      ),
+                    );
+                  }(),
                   const SizedBox(width: 4),
                   Text(
-                    '${_post.likeCount}',
+                    '${_post.totalReactions}',
                     style: TextStyle(
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                       fontSize: 13,
@@ -312,7 +332,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ],
                 const Spacer(),
                 Text(
-                  '${_post.commentCount} comment${_post.commentCount == 1 ? '' : 's'}',
+                  '${_post.commentCount} ${_post.commentCount == 1 ? context.tr('comment_singular') : context.tr('comment_plural')}',
                   style: TextStyle(
                     color: colorScheme.onSurface.withValues(alpha: 0.5),
                     fontSize: 13,
@@ -328,27 +348,52 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             color: colorScheme.outline.withValues(alpha: 0.1),
           ),
 
-          // Like button
+          // Reaction button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: TextButton.icon(
-              onPressed: _toggleLike,
-              icon: Icon(
-                _post.isLikedByMe ? Icons.favorite : Icons.favorite_border,
-                size: 20,
-                color: _post.isLikedByMe
-                    ? Colors.red[400]
-                    : colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-              label: Text(
-                'Like',
-                style: TextStyle(
-                  color: _post.isLikedByMe
-                      ? Colors.red[400]
-                      : colorScheme.onSurface.withValues(alpha: 0.5),
-                  fontSize: 13,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => _setReaction(_post.myReaction ?? 'like'),
+                    icon: _post.myReaction != null
+                        ? Text(ReactionType.emoji(_post.myReaction!), style: const TextStyle(fontSize: 18))
+                        : Icon(
+                            Icons.thumb_up_outlined,
+                            size: 20,
+                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                    label: Text(
+                      _post.myReaction != null
+                          ? ReactionType.label(_post.myReaction!)
+                          : context.tr('like'),
+                      style: TextStyle(
+                        color: _post.myReaction != null
+                            ? Colors.blue
+                            : colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => _commentFocus.requestFocus(),
+                    icon: Icon(
+                      Icons.chat_bubble_outline,
+                      size: 20,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                    label: Text(
+                      context.tr('comment'),
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

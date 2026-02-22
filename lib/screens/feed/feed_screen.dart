@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:timeago/timeago.dart' as timeago;
 import '../../models/post_model.dart';
 import '../../services/feed_service.dart';
@@ -112,8 +112,7 @@ class _FeedScreenState extends State<FeedScreen> {
       );
     });
 
-    final result = await _feedService.setReaction(post.id, reactionType);
-    // If server disagrees, we'd need to reload — for now trust optimistic
+    await _feedService.setReaction(post.id, reactionType);
   }
 
   Future<void> _toggleShare(int index) async {
@@ -129,9 +128,11 @@ class _FeedScreenState extends State<FeedScreen> {
 
     // Also trigger system share
     if (!wasShared) {
-      await Share.share(
-        '${post.authorName ?? "Someone"}: ${post.content}',
-        subject: 'Binde Post',
+      await SharePlus.instance.share(
+        ShareParams(
+          text: '${post.authorName ?? "Someone"}: ${post.content}',
+          title: 'Binde Post',
+        ),
       );
     }
 
@@ -311,7 +312,6 @@ class _PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<_PostCard> {
-  bool _showReactionPicker = false;
   OverlayEntry? _overlayEntry;
 
   void _showReactions(BuildContext btnContext) {
@@ -374,13 +374,11 @@ class _PostCardState extends State<_PostCard> {
     );
 
     Overlay.of(context).insert(_overlayEntry!);
-    setState(() => _showReactionPicker = true);
   }
 
   void _hideReactions() {
     _overlayEntry?.remove();
     _overlayEntry = null;
-    if (mounted) setState(() => _showReactionPicker = false);
   }
 
   @override
