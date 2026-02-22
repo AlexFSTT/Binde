@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/conversation_model.dart';
 import 'package:flutter/foundation.dart';
 import '../models/message_model.dart';
+import 'package:mime/mime.dart';
 
 /// Service pentru gestionarea conversațiilor și mesajelor
 /// Acest service se ocupă de:
@@ -214,9 +215,16 @@ class ChatService {
       final fileSize = await file.length();
       final originalName = file.path.split('/').last;
 
+      // Detect MIME type for proper Content-Type header
+      final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
+
       await _supabase.storage
           .from('chat-attachments')
-          .upload(storagePath, file);
+          .upload(
+            storagePath,
+            file,
+            fileOptions: FileOptions(contentType: mimeType),
+          );
 
       final attachmentUrl = _supabase.storage
           .from('chat-attachments')

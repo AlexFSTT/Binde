@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:video_player/video_player.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/conversation_model.dart';
 import '../../models/message_model.dart';
@@ -1135,84 +1137,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Widget _buildVideoBubble(Message message, ColorScheme colorScheme) {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.play_circle_fill, color: Colors.red, size: 28),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.fileName ?? 'Video',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (message.fileSize != null)
-                  Text(
-                    message.formattedFileSize,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return _ChatVideoPlayer(
+      url: message.attachmentUrl!,
+      fileName: message.fileName,
+      fileSize: message.formattedFileSize,
     );
   }
 
   Widget _buildFileBubble(Message message, bool isMine, ColorScheme colorScheme) {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.insert_drive_file, color: Colors.blue, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.fileName ?? 'File',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (message.fileSize != null)
-                  Text(
-                    message.formattedFileSize,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return _ChatFileCard(
+      url: message.attachmentUrl!,
+      fileName: message.fileName ?? 'File',
+      fileSize: message.formattedFileSize,
+      colorScheme: colorScheme,
     );
   }
 
@@ -1406,6 +1343,422 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================
+// Inline Video Player — WhatsApp style with play/pause/seek
+// =============================================================
+class _ChatVideoPlayer extends StatefulWidget {
+  final String url;
+  final String? fileName;
+  final String fileSize;
+
+  const _ChatVideoPlayer({
+    required this.url,
+    this.fileName,
+    this.fileSize = '',
+  });
+
+  @override
+  State<_ChatVideoPlayer> createState() => _ChatVideoPlayerState();
+}
+
+class _ChatVideoPlayerState extends State<_ChatVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _initialized = false;
+  bool _hasError = false;
+  bool _showControls = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    try {
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.url),
+        httpHeaders: const {'Accept': '*/*'},
+      );
+      await _controller!.initialize();
+      if (mounted) {
+        setState(() {
+          _initialized = true;
+          _isLoading = false;
+        });
+        _controller!.addListener(_onPlayerUpdate);
+      }
+    } catch (e) {
+      debugPrint('❌ Video init error: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onPlayerUpdate() {
+    if (!mounted) return;
+    // Rebuild for position updates
+    setState(() {});
+    // Detect playback end → show controls
+    if (_controller!.value.position >= _controller!.value.duration &&
+        _controller!.value.duration > Duration.zero) {
+      _controller!.seekTo(Duration.zero);
+      _controller!.pause();
+      setState(() => _showControls = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onPlayerUpdate);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    if (_controller == null) return;
+    if (_controller!.value.isPlaying) {
+      _controller!.pause();
+      setState(() => _showControls = true);
+    } else {
+      _controller!.play();
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && (_controller?.value.isPlaying ?? false)) {
+          setState(() => _showControls = false);
+        }
+      });
+    }
+  }
+
+  void _openInBrowser() async {
+    final uri = Uri.parse(widget.url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  String _fmtDur(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    // Error state — offer to open in browser
+    if (_hasError) {
+      return GestureDetector(
+        onTap: _openInBrowser,
+        child: Container(
+          width: 260,
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.play_circle_outline, color: Colors.red, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.fileName ?? 'Video',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tap to open externally',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: cs.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.open_in_new, size: 18, color: cs.onSurface.withValues(alpha: 0.4)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Loading state
+    if (_isLoading || !_initialized) {
+      return Container(
+        width: 260,
+        height: 180,
+        decoration: BoxDecoration(
+          color: cs.onSurface.withValues(alpha: 0.06),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(17),
+            topRight: Radius.circular(17),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(strokeWidth: 2),
+            const SizedBox(height: 10),
+            Text(
+              'Loading video...',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final ar = _controller!.value.aspectRatio;
+    final isPlaying = _controller!.value.isPlaying;
+
+    return GestureDetector(
+      onTap: () => setState(() => _showControls = !_showControls),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260, maxHeight: 320),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(17),
+            topRight: Radius.circular(17),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Video layer
+              AspectRatio(
+                aspectRatio: ar > 0.1 ? ar : 16 / 9,
+                child: VideoPlayer(_controller!),
+              ),
+
+              // Darkened overlay when controls visible
+              if (_showControls || !isPlaying)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: isPlaying ? 0.15 : 0.35),
+                  ),
+                ),
+
+              // Play/Pause button
+              if (_showControls || !isPlaying)
+                GestureDetector(
+                  onTap: _togglePlay,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(14),
+                    child: Icon(
+                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+                ),
+
+              // Bottom bar: progress + time
+              if (_showControls || !isPlaying)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 20, 10, 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 16,
+                          child: VideoProgressIndicator(
+                            _controller!,
+                            allowScrubbing: true,
+                            colors: VideoProgressColors(
+                              playedColor: Colors.white,
+                              bufferedColor: Colors.white.withValues(alpha: 0.3),
+                              backgroundColor: Colors.white.withValues(alpha: 0.12),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _fmtDur(_controller!.value.position),
+                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                            ),
+                            Text(
+                              _fmtDur(_controller!.value.duration),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================
+// File Card — tap to download & open
+// =============================================================
+class _ChatFileCard extends StatefulWidget {
+  final String url;
+  final String fileName;
+  final String fileSize;
+  final ColorScheme colorScheme;
+
+  const _ChatFileCard({
+    required this.url,
+    required this.fileName,
+    this.fileSize = '',
+    required this.colorScheme,
+  });
+
+  @override
+  State<_ChatFileCard> createState() => _ChatFileCardState();
+}
+
+class _ChatFileCardState extends State<_ChatFileCard> {
+  bool _isOpening = false;
+
+  IconData get _iconData {
+    final ext = widget.fileName.split('.').last.toLowerCase();
+    if (ext == 'pdf') return Icons.picture_as_pdf;
+    if (['doc', 'docx'].contains(ext)) return Icons.description;
+    if (['xls', 'xlsx'].contains(ext)) return Icons.table_chart;
+    if (['zip', 'rar', '7z'].contains(ext)) return Icons.folder_zip;
+    if (['mp3', 'wav', 'aac', 'flac'].contains(ext)) return Icons.audiotrack;
+    if (['ppt', 'pptx'].contains(ext)) return Icons.slideshow;
+    if (['txt', 'csv', 'json'].contains(ext)) return Icons.article;
+    return Icons.insert_drive_file;
+  }
+
+  Color get _iconColor {
+    final ext = widget.fileName.split('.').last.toLowerCase();
+    if (ext == 'pdf') return Colors.red;
+    if (['doc', 'docx'].contains(ext)) return Colors.blue[700]!;
+    if (['xls', 'xlsx'].contains(ext)) return Colors.green[700]!;
+    if (['zip', 'rar', '7z'].contains(ext)) return Colors.orange;
+    if (['mp3', 'wav', 'aac', 'flac'].contains(ext)) return Colors.purple;
+    if (['ppt', 'pptx'].contains(ext)) return Colors.deepOrange;
+    return Colors.blueGrey;
+  }
+
+  Future<void> _openFile() async {
+    setState(() => _isOpening = true);
+    try {
+      final uri = Uri.parse(widget.url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error opening file: $e');
+    } finally {
+      if (mounted) setState(() => _isOpening = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.colorScheme;
+
+    return GestureDetector(
+      onTap: _isOpening ? null : _openFile,
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _isOpening
+                  ? SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _iconColor,
+                      ),
+                    )
+                  : Icon(_iconData, color: _iconColor, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.fileName,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.fileSize.isNotEmpty ? widget.fileSize : 'Tap to open',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: cs.onSurface.withValues(alpha: 0.35),
+            ),
+          ],
         ),
       ),
     );
