@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/post_model.dart';
 import '../../services/feed_service.dart';
 import '../../services/friendship_service.dart';
@@ -34,11 +35,9 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   bool _isLoadingMore = false;
   bool _hasMore = true;
 
-  // Relationship
   String _relationshipStatus = 'none';
   bool _isRelationshipLoading = true;
 
-  // Full profile data
   Map<String, dynamic>? _profile;
 
   bool get _isMe =>
@@ -183,13 +182,28 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     if (result != null && mounted) setState(() => _posts[index] = result);
   }
 
+  Future<void> _openUrl(String url) async {
+    String finalUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      finalUrl = 'https://$url';
+    }
+    try {
+      await launchUrl(Uri.parse(finalUrl), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open link')),
+        );
+      }
+    }
+  }
+
   String get _fullName => _profile?['full_name'] ?? widget.userName;
   String? get _avatarUrl => _profile?['avatar_url'] ?? widget.userAvatar;
   String? get _coverUrl => _profile?['cover_url'];
   String? get _bio => _profile?['bio'];
   bool get _showFullProfile => _isMe || _relationshipStatus == 'friend';
 
-  // Contact visibility check
   bool get _canSeeContact {
     final vis = _profile?['contact_visibility'] ?? 'friends';
     if (vis == 'public') return true;
@@ -209,15 +223,14 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Custom app bar with cover
+            // ✅ AppBar fără titlu (numele e în header)
             SliverAppBar(
               expandedHeight: 200,
               pinned: true,
-              title: Text(_fullName),
               flexibleSpace: FlexibleSpaceBar(
                 background: _coverUrl != null && _showFullProfile
                     ? Image.network(_coverUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(color: cs.surfaceContainerHighest))
+                        errorBuilder: (_, __, ___) => Container(color: cs.surfaceContainerHighest))
                     : Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -233,15 +246,15 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
               ),
             ),
 
-            // Profile header
+            // ✅ Avatar care depășește cover-ul + profile info
             SliverToBoxAdapter(child: _buildProfileHeader(cs)),
 
-            // Divider
+            // Separator
             SliverToBoxAdapter(
               child: Container(height: 8, color: cs.surfaceContainerHighest.withValues(alpha: 0.4)),
             ),
 
-            // Posts section title
+            // Posts title
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -281,7 +294,6 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                 ),
               ),
 
-            // Bottom spacing
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         ),
@@ -290,7 +302,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   }
 
   // =====================================================
-  // PROFILE HEADER (Facebook-like)
+  // PROFILE HEADER — avatar depășește cover-ul
   // =====================================================
 
   Widget _buildProfileHeader(ColorScheme cs) {
@@ -299,73 +311,77 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar + Name + Relationship button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Row(
-              children: [
-                // Avatar
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: cs.surface, width: 3),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6)],
-                  ),
-                  child: CircleAvatar(
-                    radius: 42,
-                    backgroundColor: _showFullProfile ? cs.primaryContainer : cs.surfaceContainerHighest,
-                    backgroundImage: _showFullProfile && _avatarUrl != null
-                        ? NetworkImage(_avatarUrl!)
-                        : null,
-                    child: _showFullProfile && _avatarUrl == null
-                        ? Text(_fullName[0].toUpperCase(),
-                            style: TextStyle(color: cs.onPrimaryContainer, fontSize: 32, fontWeight: FontWeight.bold))
-                        : !_showFullProfile
-                            ? Icon(Icons.person, size: 36, color: cs.onSurface.withValues(alpha: 0.25))
-                            : null,
-                  ),
+          // ✅ Stack: avatar care urcă peste cover cu 30px
+          Transform.translate(
+            offset: const Offset(0, -36),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: cs.surface, width: 4),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6)],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      if (_profile?['username'] != null)
-                        Text('@${_profile!['username']}',
-                            style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.45))),
-                    ],
-                  ),
+                child: CircleAvatar(
+                  radius: 46,
+                  backgroundColor: _showFullProfile ? cs.primaryContainer : cs.surfaceContainerHighest,
+                  backgroundImage: _showFullProfile && _avatarUrl != null
+                      ? NetworkImage(_avatarUrl!)
+                      : null,
+                  child: _showFullProfile && _avatarUrl == null
+                      ? Text(_fullName[0].toUpperCase(),
+                          style: TextStyle(color: cs.onPrimaryContainer, fontSize: 32, fontWeight: FontWeight.bold))
+                      : !_showFullProfile
+                          ? Icon(Icons.person, size: 36, color: cs.onSurface.withValues(alpha: 0.25))
+                          : null,
                 ),
-              ],
+              ),
             ),
           ),
 
-          // Bio
-          if (_showFullProfile && _bio != null && _bio!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text(_bio!, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.4)),
+          // Compensăm offset-ul negativ (avatar urcă -36, dar e radius 46 + border 4 = 100 height)
+          // Trebuie un mic padding negativ
+          Transform.translate(
+            offset: const Offset(0, -24),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nume + username
+                  Text(_fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  if (_profile?['username'] != null)
+                    Text('@${_profile!['username']}',
+                        style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.45))),
+
+                  // Bio
+                  if (_showFullProfile && _bio != null && _bio!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(_bio!, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.4)),
+                  ],
+
+                  // Relationship button
+                  if (!_isMe && !_isRelationshipLoading) ...[
+                    const SizedBox(height: 14),
+                    _buildRelationshipButton(cs),
+                  ],
+
+                  // Details section
+                  if (_showFullProfile) _buildDetailsSection(cs),
+                ],
+              ),
             ),
+          ),
 
-          // Relationship button
-          if (!_isMe && !_isRelationshipLoading)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: _buildRelationshipButton(cs),
-            ),
-
-          // ====== DETAILS SECTION ======
-          if (_showFullProfile) _buildDetailsSection(cs),
-
-          const SizedBox(height: 12),
+          // Compensăm spațiul negativ total
+          const SizedBox(height: 0),
         ],
       ),
     );
   }
 
   // =====================================================
-  // DETAILS SECTION (Facebook-like)
+  // DETAILS SECTION — cu link clickable
   // =====================================================
 
   Widget _buildDetailsSection(ColorScheme cs) {
@@ -433,35 +449,48 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
       if (_profile?['phone'] != null && _profile!['phone'].toString().isNotEmpty) {
         details.add(_DetailItem(Icons.phone_outlined, _profile!['phone']));
       }
+      // ✅ Website — marcat ca link
       if (_profile?['website'] != null && _profile!['website'].toString().isNotEmpty) {
-        details.add(_DetailItem(Icons.link, _profile!['website']));
+        details.add(_DetailItem(Icons.link, _profile!['website'], isLink: true));
       }
     }
 
     if (details.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withValues(alpha: 0.7))),
-          const SizedBox(height: 10),
-          ...details.map((d) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(d.icon, size: 20, color: cs.onSurface.withValues(alpha: 0.4)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(d.text, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.3)),
-                    ),
-                  ],
-                ),
-              )),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Text('Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withValues(alpha: 0.7))),
+        const SizedBox(height: 10),
+        ...details.map((d) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(d.icon, size: 20, color: cs.onSurface.withValues(alpha: 0.4)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: d.isLink
+                        ? GestureDetector(
+                            onTap: () => _openUrl(d.text),
+                            child: Text(
+                              d.text,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: cs.primary,
+                                decoration: TextDecoration.underline,
+                                decorationColor: cs.primary.withValues(alpha: 0.4),
+                                height: 1.3,
+                              ),
+                            ),
+                          )
+                        : Text(d.text, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.3)),
+                  ),
+                ],
+              ),
+            )),
+      ],
     );
   }
 
@@ -535,7 +564,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   }
 
   // =====================================================
-  // POST CARD (cu spațiu între ele)
+  // POST CARD
   // =====================================================
 
   Widget _buildPostCard(int index, ColorScheme cs) {
@@ -553,18 +582,14 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
               children: [
-                Text(
-                  timeago.format(post.createdAt),
-                  style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4), fontSize: 12),
-                ),
+                Text(timeago.format(post.createdAt),
+                    style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4), fontSize: 12)),
                 const SizedBox(width: 6),
                 Icon(
                   post.visibility == 'friends' ? Icons.people_outline : Icons.public,
-                  size: 14,
-                  color: cs.onSurface.withValues(alpha: 0.3),
+                  size: 14, color: cs.onSurface.withValues(alpha: 0.3),
                 ),
                 const Spacer(),
-                // Delete (doar dacă e al meu)
                 if (post.userId == currentUserId)
                   GestureDetector(
                     onTap: () => _confirmDelete(index),
@@ -588,11 +613,8 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
               constraints: const BoxConstraints(maxHeight: 400),
               child: SizedBox(
                 width: double.infinity,
-                child: Image.network(
-                  post.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
+                child: Image.network(post.imageUrl!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink()),
               ),
             ),
           ],
@@ -629,11 +651,8 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                     size: 19,
                     color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45),
                   ),
-                  label: Text('Like',
-                      style: TextStyle(
-                        color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45),
-                        fontSize: 13,
-                      )),
+                  label: Text('Like', style: TextStyle(
+                    color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
                 ),
               ),
               Expanded(
@@ -677,5 +696,6 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
 class _DetailItem {
   final IconData icon;
   final String text;
-  const _DetailItem(this.icon, this.text);
+  final bool isLink;
+  const _DetailItem(this.icon, this.text, {this.isLink = false});
 }
