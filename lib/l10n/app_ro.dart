@@ -42,6 +42,7 @@ const Map<String, String> ro = {
   'name_min_length': 'Numele trebuie să aibă minim 2 caractere',
 
   // Navigation
+  'nav_feed': 'Feed',
   'nav_chat': 'Chat',
   'nav_videos': 'Videos',
   'nav_shop': 'Shop',

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Bottom Navigation Bar cu 3 items: Chat, Shop, More (hamburger)
+/// Bottom Navigation Bar cu 4 items: Feed, Chat, Shop, More
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -25,6 +25,13 @@ class AppBottomNav extends StatelessWidget {
       unselectedFontSize: 12,
       elevation: 8,
       items: const [
+        // Feed
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Feed',
+        ),
+        
         // Chat
         BottomNavigationBarItem(
           icon: Icon(Icons.chat),

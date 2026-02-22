@@ -4,11 +4,12 @@ import '../../l10n/app_localizations.dart';
 import '../../widgets/common/hamburger_menu.dart';
 import '../../widgets/common/notification_badge.dart';
 import '../../providers/notification_provider.dart';
+import '../feed/feed_screen.dart';
 import '../chat/conversations_screen.dart';
 import '../shop/products_list_screen.dart';
 
 /// Home screen cu bottom navigation
-/// ✅ CLEANUP: Eliminat Learn și Sports
+/// ✅ NOU: Feed tab (Facebook-like)
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -28,13 +29,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     
     _screens = [
-      const ConversationsScreen(),     // 0 - Chat
-      const ShopScreen(),              // 1 - Shop
+      const FeedScreen(),              // 0 - Feed
+      const ConversationsScreen(),     // 1 - Chat
+      const ShopScreen(),              // 2 - Shop
     ];
   }
 
   void _onNavigationTap(int index) {
-    if (index == 2) {
+    if (index == 3) {
       // Hamburger menu
       _scaffoldKey.currentState?.openDrawer();
     } else {
@@ -60,6 +62,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onDestinationSelected: _onNavigationTap,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
+          // Feed
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: context.tr('nav_feed'),
+          ),
+
+          // Chat
           NavigationDestination(
             icon: NotificationBadge(
               count: chatBadgeCount,
@@ -72,12 +82,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: context.tr('nav_chat'),
           ),
           
+          // Shop
           NavigationDestination(
             icon: const Icon(Icons.shopping_bag_outlined),
             selectedIcon: const Icon(Icons.shopping_bag),
             label: context.tr('nav_shop'),
           ),
           
+          // Menu
           NavigationDestination(
             icon: const Icon(Icons.menu),
             selectedIcon: const Icon(Icons.menu_open),

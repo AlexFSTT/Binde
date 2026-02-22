@@ -42,6 +42,7 @@ const Map<String, String> en = {
   'name_min_length': 'Name must be at least 2 characters',
 
   // Navigation
+  'nav_feed': 'Feed',
   'nav_chat': 'Chat',
   'nav_videos': 'Videos',
   'nav_shop': 'Shop',
