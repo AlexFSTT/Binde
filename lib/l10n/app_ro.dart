@@ -273,4 +273,12 @@ const Map<String, String> ro = {
   'file': 'Fișier',
   'sending_media': 'Se trimite...',
 
+  // Chat delete & reactions
+  'delete_for_me': 'Șterge pentru mine',
+  'delete_for_everyone': 'Șterge pentru toți',
+  'delete_for_everyone_confirm': 'Acest mesaj va fi șters pentru toți participanții din conversație.',
+  'message_deleted': 'Acest mesaj a fost șters',
+  'delete_conversation': 'Șterge conversația',
+  'delete_conversation_confirm': 'Conversația și toate mesajele vor fi șterse permanent. Acțiunea nu poate fi anulată.',
+
 };

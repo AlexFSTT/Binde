@@ -51,6 +51,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _showAttachMenu = false;
   bool _showEmojiPicker = false;
   final ImagePicker _imagePicker = ImagePicker();
+  Set<String> _deletedIds = {};
 
   // Pentru status
   bool _isOnline = false;
@@ -172,7 +173,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
 
     try {
-      final messages = await _chatService.getMessages(widget.conversation.id);
+      var messages = await _chatService.getMessages(widget.conversation.id);
+      _deletedIds = await _chatService.getDeletedMessageIds(widget.conversation.id);
+      messages = await _chatService.enrichMessagesWithReactions(messages);
+
+      // Filter: remove soft-deleted for me + show placeholder for deleted_for_everyone
+      messages = messages.where((m) => !_deletedIds.contains(m.id)).toList();
+
       setState(() {
         _messages = messages;
         _isLoading = false;
@@ -221,6 +228,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     attachment_url,
                     file_name,
                     file_size,
+                    deleted_for_everyone,
                     sender:profiles!messages_sender_id_fkey(
                       full_name,
                       avatar_url
@@ -244,7 +252,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 setState(() {
                   // ✅ Verificăm să nu adăugăm mesajul duplicat
                   final exists = _messages.any((m) => m.id == messageWithSender.id);
-                  if (!exists) {
+                  if (!exists && !_deletedIds.contains(messageWithSender.id)) {
                     _messages.add(messageWithSender);
                   }
                 });
@@ -260,6 +268,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               }
             } catch (e) {
               debugPrint('Error fetching new message details: $e');
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: widget.conversation.id,
+          ),
+          callback: (payload) {
+            final updatedId = payload.newRecord['id'] as String;
+            final deletedForEveryone = payload.newRecord['deleted_for_everyone'] as bool? ?? false;
+            if (deletedForEveryone && mounted) {
+              setState(() {
+                final idx = _messages.indexWhere((m) => m.id == updatedId);
+                if (idx >= 0) {
+                  _messages[idx] = _messages[idx].copyWith(
+                    deletedForEveryone: true,
+                    content: '',
+                    attachmentUrl: null,
+                  );
+                }
+              });
             }
           },
         )
@@ -996,13 +1030,53 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   /// Construiește un balon de mesaj STILIZAT - WhatsApp style
   Widget _buildMessageBubble(Message message, bool isMine, ColorScheme colorScheme) {
+    // Deleted for everyone → show placeholder
+    if (message.deletedForEveryone) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!isMine) const SizedBox(width: 40),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.block, size: 14,
+                      color: colorScheme.onSurface.withValues(alpha: 0.35)),
+                  const SizedBox(width: 6),
+                  Text(
+                    context.tr('message_deleted'),
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      fontSize: 13,
+                      color: colorScheme.onSurface.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isMine) const SizedBox(width: 8),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Avatar pentru mesajele celorlalți (stânga)
+          // Avatar
           if (!isMine) ...[
             CircleAvatar(
               radius: 16,
@@ -1018,81 +1092,143 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
             const SizedBox(width: 8),
           ],
-          // Balonul cu mesajul
+          // Bubble + reactions
           Flexible(
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: isMine
-                    ? colorScheme.primary.withValues(alpha: 0.22)
-                    : colorScheme.surfaceContainerHigh,
-                border: isMine
-                    ? Border.all(color: colorScheme.primary.withValues(alpha: 0.15))
-                    : Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: isMine
-                      ? const Radius.circular(18)
-                      : const Radius.circular(2),
-                  bottomRight: isMine
-                      ? const Radius.circular(2)
-                      : const Radius.circular(18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Media content
-                  if (message.messageType == MessageType.image && message.attachmentUrl != null)
-                    _buildImageBubble(message, colorScheme)
-                  else if (message.messageType == MessageType.video && message.attachmentUrl != null)
-                    _buildVideoBubble(message, colorScheme)
-                  else if (message.messageType == MessageType.file && message.attachmentUrl != null)
-                    _buildFileBubble(message, isMine, colorScheme),
-
-                  // Text content (or caption for media)
-                  if (message.messageType == MessageType.text ||
-                      (message.content.isNotEmpty &&
-                       !message.content.startsWith('📷') &&
-                       !message.content.startsWith('🎥') &&
-                       !message.content.startsWith('📎')))
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-                      child: Text(
-                        message.content,
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontSize: 15,
+            child: Column(
+              crossAxisAlignment:
+                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                // The bubble
+                GestureDetector(
+                  onLongPress: () => _showMessageOptions(message, isMine),
+                  child: Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: isMine
+                          ? colorScheme.primary.withValues(alpha: 0.22)
+                          : colorScheme.surfaceContainerHigh,
+                      border: isMine
+                          ? Border.all(color: colorScheme.primary.withValues(alpha: 0.15))
+                          : Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(18),
+                        topRight: const Radius.circular(18),
+                        bottomLeft: isMine
+                            ? const Radius.circular(18)
+                            : const Radius.circular(2),
+                        bottomRight: isMine
+                            ? const Radius.circular(2)
+                            : const Radius.circular(18),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
+                      ],
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Media content
+                        if (message.messageType == MessageType.image && message.attachmentUrl != null)
+                          _buildImageBubble(message, colorScheme)
+                        else if (message.messageType == MessageType.video && message.attachmentUrl != null)
+                          _buildVideoBubble(message, colorScheme)
+                        else if (message.messageType == MessageType.file && message.attachmentUrl != null)
+                          _buildFileBubble(message, isMine, colorScheme),
 
-                  // Timestamp
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-                    child: Text(
-                      _formatMessageTime(message.createdAt),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isMine
-                            ? colorScheme.primary.withValues(alpha: 0.7)
-                            : colorScheme.onSurface.withValues(alpha: 0.45),
+                        // Text content
+                        if (message.messageType == MessageType.text ||
+                            (message.content.isNotEmpty &&
+                             !message.content.startsWith('📷') &&
+                             !message.content.startsWith('🎥') &&
+                             !message.content.startsWith('📎')))
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                            child: Text(
+                              message.content,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+
+                        // Timestamp
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                          child: Text(
+                            _formatMessageTime(message.createdAt),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isMine
+                                  ? colorScheme.primary.withValues(alpha: 0.7)
+                                  : colorScheme.onSurface.withValues(alpha: 0.45),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Reactions row (below bubble)
+                if (message.totalReactions > 0)
+                  Transform.translate(
+                    offset: const Offset(0, -4),
+                    child: Container(
+                      margin: EdgeInsets.only(
+                        left: isMine ? 0 : 8,
+                        right: isMine ? 8 : 0,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ...message.reactionCounts.entries
+                              .where((e) => e.value > 0)
+                              .take(5)
+                              .map((e) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                                    child: Text(
+                                      MessageReaction.emoji(e.key),
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  )),
+                          if (message.totalReactions > 1) ...[
+                            const SizedBox(width: 2),
+                            Text(
+                              '${message.totalReactions}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
           ),
-          // Spațiu pentru mesajele mele (dreapta)
           if (isMine) const SizedBox(width: 8),
         ],
       ),
@@ -1163,6 +1299,185 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   /// Collect all media messages and open gallery at the tapped item
+  // =============================================================
+  // LONG PRESS → REACT + DELETE
+  // =============================================================
+
+  void _showMessageOptions(Message message, bool isMine) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Reaction bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: MessageReaction.all.map((type) {
+                        final isSelected = message.myReaction == type;
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _onReaction(message, type);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? colorScheme.primary.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              MessageReaction.emoji(type),
+                              style: TextStyle(fontSize: isSelected ? 30 : 26),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+                Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+
+                // Delete for me
+                ListTile(
+                  leading: Icon(Icons.delete_outline, color: colorScheme.error),
+                  title: Text(
+                    context.tr('delete_for_me'),
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _deleteForMe(message);
+                  },
+                ),
+
+                // Delete for everyone (only if sender)
+                if (isMine)
+                  ListTile(
+                    leading: Icon(Icons.delete_forever, color: colorScheme.error),
+                    title: Text(
+                      context.tr('delete_for_everyone'),
+                      style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.w600),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _deleteForEveryone(message);
+                    },
+                  ),
+
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _onReaction(Message message, String reactionType) async {
+    // Optimistic update
+    final oldReaction = message.myReaction;
+    final isRemove = oldReaction == reactionType;
+    final newCounts = Map<String, int>.from(message.reactionCounts);
+
+    if (oldReaction != null) {
+      newCounts[oldReaction] = (newCounts[oldReaction] ?? 1) - 1;
+      if (newCounts[oldReaction]! <= 0) newCounts.remove(oldReaction);
+    }
+    if (!isRemove) {
+      newCounts[reactionType] = (newCounts[reactionType] ?? 0) + 1;
+    }
+    final newTotal = newCounts.values.fold(0, (a, b) => a + b);
+
+    final idx = _messages.indexWhere((m) => m.id == message.id);
+    if (idx >= 0) {
+      setState(() {
+        _messages[idx] = message.copyWith(
+          myReaction: isRemove ? null : reactionType,
+          clearMyReaction: isRemove,
+          reactionCounts: newCounts,
+          totalReactions: newTotal,
+        );
+      });
+    }
+
+    await _chatService.toggleMessageReaction(message.id, reactionType);
+  }
+
+  Future<void> _deleteForMe(Message message) async {
+    setState(() {
+      _messages.removeWhere((m) => m.id == message.id);
+      _deletedIds.add(message.id);
+    });
+    await _chatService.deleteMessageForMe(message.id);
+  }
+
+  Future<void> _deleteForEveryone(Message message) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('delete_for_everyone')),
+        content: Text(context.tr('delete_for_everyone_confirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text(context.tr('delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final idx = _messages.indexWhere((m) => m.id == message.id);
+    if (idx >= 0) {
+      setState(() {
+        _messages[idx] = message.copyWith(
+          deletedForEveryone: true,
+          content: '',
+          attachmentUrl: null,
+        );
+      });
+    }
+
+    await _chatService.deleteMessageForEveryone(message.id);
+  }
+
   void _openMediaGallery(Message tappedMessage) {
     final mediaMessages = _messages
         .where((m) =>

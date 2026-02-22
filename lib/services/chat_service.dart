@@ -320,6 +320,189 @@ class ChatService {
   }
 
   /// Obține numărul de mesaje necitite pentru utilizatorul curent
+  // =============================================================
+  // DELETE MESSAGES
+  // =============================================================
+
+  /// Delete message for me only (soft delete via message_deletions)
+  Future<void> deleteMessageForMe(String messageId) async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    await _supabase.from('message_deletions').upsert({
+      'message_id': messageId,
+      'user_id': currentUserId,
+    });
+  }
+
+  /// Delete message for everyone (sender only)
+  Future<bool> deleteMessageForEveryone(String messageId) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) return false;
+
+      // Verify sender owns the message
+      final msg = await _supabase
+          .from('messages')
+          .select('sender_id')
+          .eq('id', messageId)
+          .single();
+
+      if (msg['sender_id'] != currentUserId) return false;
+
+      await _supabase
+          .from('messages')
+          .update({'deleted_for_everyone': true})
+          .eq('id', messageId);
+
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting for everyone: $e');
+      return false;
+    }
+  }
+
+  /// Delete entire conversation and all its messages
+  Future<bool> deleteConversation(String conversationId) async {
+    try {
+      // Delete all messages first (cascading will clean reactions + deletions)
+      await _supabase
+          .from('messages')
+          .delete()
+          .eq('conversation_id', conversationId);
+
+      // Delete the conversation
+      await _supabase
+          .from('conversations')
+          .delete()
+          .eq('id', conversationId);
+
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting conversation: $e');
+      return false;
+    }
+  }
+
+  // =============================================================
+  // REACTIONS
+  // =============================================================
+
+  /// Toggle reaction on a message (same type = remove, different = update)
+  Future<String?> toggleMessageReaction(String messageId, String reactionType) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) return null;
+
+      // Check existing reaction
+      final existing = await _supabase
+          .from('message_reactions')
+          .select()
+          .eq('message_id', messageId)
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+
+      if (existing != null) {
+        if (existing['reaction_type'] == reactionType) {
+          // Same reaction → remove
+          await _supabase
+              .from('message_reactions')
+              .delete()
+              .eq('message_id', messageId)
+              .eq('user_id', currentUserId);
+          return null;
+        } else {
+          // Different → update
+          await _supabase
+              .from('message_reactions')
+              .update({'reaction_type': reactionType})
+              .eq('message_id', messageId)
+              .eq('user_id', currentUserId);
+          return reactionType;
+        }
+      } else {
+        // No reaction → insert
+        await _supabase.from('message_reactions').insert({
+          'message_id': messageId,
+          'user_id': currentUserId,
+          'reaction_type': reactionType,
+        });
+        return reactionType;
+      }
+    } catch (e) {
+      debugPrint('Error toggling reaction: $e');
+      return null;
+    }
+  }
+
+  /// Load reactions for a list of messages and enrich them
+  Future<List<Message>> enrichMessagesWithReactions(List<Message> messages) async {
+    if (messages.isEmpty) return messages;
+    final currentUserId = _supabase.auth.currentUser?.id;
+
+    final messageIds = messages.map((m) => m.id).toList();
+
+    try {
+      final reactions = await _supabase
+          .from('message_reactions')
+          .select()
+          .inFilter('message_id', messageIds);
+
+      // Build reaction maps per message
+      final Map<String, Map<String, int>> countsMap = {};
+      final Map<String, String?> myReactionMap = {};
+
+      for (final r in reactions) {
+        final msgId = r['message_id'] as String;
+        final type = r['reaction_type'] as String;
+        final userId = r['user_id'] as String;
+
+        countsMap.putIfAbsent(msgId, () => {});
+        countsMap[msgId]![type] = (countsMap[msgId]![type] ?? 0) + 1;
+
+        if (userId == currentUserId) {
+          myReactionMap[msgId] = type;
+        }
+      }
+
+      return messages.map((m) {
+        final counts = countsMap[m.id] ?? {};
+        final total = counts.values.fold(0, (a, b) => a + b);
+        return m.copyWith(
+          reactionCounts: counts,
+          totalReactions: total,
+          myReaction: myReactionMap[m.id],
+          clearMyReaction: !myReactionMap.containsKey(m.id),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Error loading reactions: $e');
+      return messages;
+    }
+  }
+
+  /// Get IDs of messages deleted for current user
+  Future<Set<String>> getDeletedMessageIds(String conversationId) async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) return {};
+
+    try {
+      // Get messages in this conversation that user has soft-deleted
+      final response = await _supabase
+          .from('message_deletions')
+          .select('message_id, messages!inner(conversation_id)')
+          .eq('user_id', currentUserId)
+          .eq('messages.conversation_id', conversationId);
+
+      return (response as List)
+          .map((r) => r['message_id'] as String)
+          .toSet();
+    } catch (e) {
+      debugPrint('Error getting deleted IDs: $e');
+      return {};
+    }
+  }
+
   Future<int> getUnreadCount() async {
     try {
       final currentUserId = _supabase.auth.currentUser?.id;

@@ -131,6 +131,98 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     }
   }
 
+  void _showDeleteConversationDialog(Conversation conversation) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    conversation.otherUserName ?? 'Conversation',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: Icon(Icons.delete_forever, color: colorScheme.error),
+                  title: Text(
+                    context.tr('delete_conversation'),
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _confirmDeleteConversation(conversation);
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteConversation(Conversation conversation) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('delete_conversation')),
+        content: Text(context.tr('delete_conversation_confirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text(context.tr('delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Optimistic removal
+    setState(() {
+      _conversations.removeWhere((c) => c.id == conversation.id);
+    });
+
+    final success = await _chatService.deleteConversation(conversation.id);
+    if (!success && mounted) {
+      _loadConversations(); // Reload on failure
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('error'))),
+      );
+    }
+  }
+
   void _openChat(Conversation conversation) {
     Navigator.push(
       context,
@@ -314,6 +406,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                 ),
                 child: InkWell(
                   onTap: () => _openChat(conversation),
+                  onLongPress: () => _showDeleteConversationDialog(conversation),
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
                     padding: const EdgeInsets.only(

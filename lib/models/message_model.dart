@@ -26,6 +26,41 @@ enum MessageType {
   bool get isMedia => this == MessageType.image || this == MessageType.video;
 }
 
+/// Reaction types for messages
+class MessageReaction {
+  static const String like = 'like';
+  static const String haha = 'haha';
+  static const String heart = 'heart';
+  static const String dislike = 'dislike';
+  static const String vomit = 'vomit';
+  static const String angry = 'angry';
+  static const String happy = 'happy';
+  static const String worried = 'worried';
+  static const String poop = 'poop';
+  static const String curious = 'curious';
+
+  static const List<String> all = [
+    like, haha, heart, dislike, vomit,
+    angry, happy, worried, poop, curious,
+  ];
+
+  static String emoji(String type) {
+    switch (type) {
+      case like: return '👍';
+      case haha: return '😂';
+      case heart: return '❤️';
+      case dislike: return '👎';
+      case vomit: return '🤮';
+      case angry: return '😡';
+      case happy: return '😊';
+      case worried: return '😟';
+      case poop: return '💩';
+      case curious: return '🤔';
+      default: return '👍';
+    }
+  }
+}
+
 /// Model pentru un mesaj într-o conversație
 class Message {
   final String id;
@@ -38,8 +73,13 @@ class Message {
   final int? fileSize;
   final bool isRead;
   final DateTime createdAt;
+  final bool deletedForEveryone;
 
-  // Informații suplimentare despre expeditor
+  // Reactions
+  final Map<String, int> reactionCounts;
+  final int totalReactions;
+  final String? myReaction;
+
   final String? senderName;
   final String? senderAvatar;
 
@@ -54,6 +94,10 @@ class Message {
     this.fileSize,
     this.isRead = false,
     required this.createdAt,
+    this.deletedForEveryone = false,
+    this.reactionCounts = const {},
+    this.totalReactions = 0,
+    this.myReaction,
     this.senderName,
     this.senderAvatar,
   });
@@ -70,6 +114,7 @@ class Message {
       fileSize: json['file_size'] as int?,
       isRead: json['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
+      deletedForEveryone: json['deleted_for_everyone'] as bool? ?? false,
       senderName: json['sender_name'] as String?,
       senderAvatar: json['sender_avatar'] as String?,
     );
@@ -97,7 +142,6 @@ class Message {
 
   bool isMine(String currentUserId) => senderId == currentUserId;
 
-  /// Human-readable file size
   String get formattedFileSize {
     if (fileSize == null) return '';
     if (fileSize! < 1024) return '${fileSize}B';
@@ -116,6 +160,11 @@ class Message {
     int? fileSize,
     bool? isRead,
     DateTime? createdAt,
+    bool? deletedForEveryone,
+    Map<String, int>? reactionCounts,
+    int? totalReactions,
+    String? myReaction,
+    bool clearMyReaction = false,
     String? senderName,
     String? senderAvatar,
   }) {
@@ -130,6 +179,10 @@ class Message {
       fileSize: fileSize ?? this.fileSize,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
+      deletedForEveryone: deletedForEveryone ?? this.deletedForEveryone,
+      reactionCounts: reactionCounts ?? this.reactionCounts,
+      totalReactions: totalReactions ?? this.totalReactions,
+      myReaction: clearMyReaction ? null : (myReaction ?? this.myReaction),
       senderName: senderName ?? this.senderName,
       senderAvatar: senderAvatar ?? this.senderAvatar,
     );

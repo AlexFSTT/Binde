@@ -273,4 +273,12 @@ const Map<String, String> en = {
   'file': 'File',
   'sending_media': 'Sending...',
 
+  // Chat delete & reactions
+  'delete_for_me': 'Delete for me',
+  'delete_for_everyone': 'Delete for everyone',
+  'delete_for_everyone_confirm': 'This message will be deleted for everyone in this chat.',
+  'message_deleted': 'This message was deleted',
+  'delete_conversation': 'Delete conversation',
+  'delete_conversation_confirm': 'This will permanently delete the entire conversation and all messages. This cannot be undone.',
+
 };
