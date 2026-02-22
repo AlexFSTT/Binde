@@ -5,13 +5,10 @@ import '../../widgets/common/hamburger_menu.dart';
 import '../../widgets/common/notification_badge.dart';
 import '../../providers/notification_provider.dart';
 import '../chat/conversations_screen.dart';
-import '../learn/lessons_list_screen.dart';
 import '../shop/products_list_screen.dart';
-import '../sports/sports_screen.dart';
 
 /// Home screen cu bottom navigation
-/// ✅ REALTIME: Badge-urile pe tab-uri se actualizează automat
-/// ✅ UPGRADE: Counter badges (3, 12, 99+) în loc de bulină roșie
+/// ✅ CLEANUP: Eliminat Learn și Sports
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -32,14 +29,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     
     _screens = [
       const ConversationsScreen(),     // 0 - Chat
-      const LessonsListScreen(),       // 1 - Learn
-      const ShopScreen(),              // 2 - Shop
-      const SportsScreen(),            // 3 - Sports
+      const ShopScreen(),              // 1 - Shop
     ];
   }
 
   void _onNavigationTap(int index) {
-    if (index == 4) {
+    if (index == 2) {
       // Hamburger menu
       _scaffoldKey.currentState?.openDrawer();
     } else {
@@ -51,11 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ COUNT pentru Chat: friend requests + mesaje necitite
     final chatBadgeCount = ref.watch(chatBadgeCountProvider);
-    
-    // ✅ COUNT pentru Learn
-    final learnBadgeCount = ref.watch(learnBadgeCountProvider);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -69,7 +60,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onDestinationSelected: _onNavigationTap,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
-          // ✅ Chat - COUNTER badge (friend requests + mesaje necitite)
           NavigationDestination(
             icon: NotificationBadge(
               count: chatBadgeCount,
@@ -82,34 +72,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: context.tr('nav_chat'),
           ),
           
-          // ✅ Learn - COUNTER badge
-          NavigationDestination(
-            icon: NotificationBadge(
-              count: learnBadgeCount,
-              child: const Icon(Icons.school_outlined),
-            ),
-            selectedIcon: NotificationBadge(
-              count: learnBadgeCount,
-              child: const Icon(Icons.school),
-            ),
-            label: context.tr('nav_learn'),
-          ),
-          
-          // Shop - fără badge
           NavigationDestination(
             icon: const Icon(Icons.shopping_bag_outlined),
             selectedIcon: const Icon(Icons.shopping_bag),
             label: context.tr('nav_shop'),
           ),
           
-          // Sports - badge în screen-ul propriu
-          NavigationDestination(
-            icon: const Icon(Icons.sports_soccer_outlined),
-            selectedIcon: const Icon(Icons.sports_soccer),
-            label: context.tr('nav_sports'),
-          ),
-          
-          // Hamburger Menu
           NavigationDestination(
             icon: const Icon(Icons.menu),
             selectedIcon: const Icon(Icons.menu_open),

@@ -43,10 +43,8 @@ const Map<String, String> ro = {
 
   // Navigation
   'nav_chat': 'Chat',
-  'nav_learn': 'Learn',
   'nav_videos': 'Videos',
   'nav_shop': 'Shop',
-  'nav_sports': 'Sports',
   'nav_games': 'Games',
 
   // Profile
@@ -69,12 +67,6 @@ const Map<String, String> ro = {
   'theme_system': 'Urmează tema sistemului',
   'help_support': 'Ajutor & Suport',
   'about_app': 'Despre aplicație',
-
-  // Learn
-  'lessons': 'Lecții',
-  'lesson_details': 'Detalii lecție',
-  'minutes': 'minute',
-  'no_lessons': 'Nu există lecții disponibile.',
 
   // Videos
   'videos': 'Video-uri',
@@ -100,21 +92,6 @@ const Map<String, String> ro = {
   'out_of_stock': 'Stoc epuizat',
   'items': 'articole',
   'no_products': 'Nu există produse disponibile.',
-
-  // Sports
-  'sports': 'Sporturi',
-  'news': 'Știri',
-  'live': 'Live',
-  'football': 'Fotbal',
-  'f1': 'Formula 1',
-  'tennis': 'Tenis',
-  'live_now': 'LIVE ACUM',
-  'upcoming': 'În curând',
-  'finished': 'Încheiate',
-  'watch': 'Urmărește',
-  'no_news': 'Nu există știri disponibile.',
-  'no_events': 'Nu există evenimente disponibile.',
-  'loading_stream': 'Se încarcă stream-ul live...',
 
   // Chat
   'conversations': 'Conversații',
@@ -145,7 +122,7 @@ const Map<String, String> ro = {
 // Hamburger Menu
 'about_binde': 'Despre Binde',
 'binde_tagline': 'Binde - Platformă All-in-One',
-'binde_description': 'O platformă completă care combină Chat, Learn, Shop, Sports și multe altele într-o singură aplicație.',
+'binde_description': 'O platformă completă care combină Chat, Shop și multe altele într-o singură aplicație.',
 'version': 'Versiune',
 
   // Friends & Requests

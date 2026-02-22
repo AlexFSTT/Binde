@@ -2,8 +2,8 @@
 class NotificationModel {
   final String id;
   final String userId;
-  final String type; // 'friend_request', 'sports_news', 'sports_live', 'learn_update'
-  final String category; // 'chat', 'sports', 'learn'
+  final String type; // 'friend_request'
+  final String category; // 'chat'
   final String title;
   final String message;
   final Map<String, dynamic> data;
@@ -76,8 +76,6 @@ class NotificationModel {
 
   /// Inferă categoria din tip (pentru compatibilitate cu notificări vechi)
   static String _inferCategory(String type) {
-    if (type.startsWith('sports')) return 'sports';
-    if (type.startsWith('learn')) return 'learn';
-    return 'chat'; // friend_request și chat
+    return 'chat';
   }
 }

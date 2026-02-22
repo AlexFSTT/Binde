@@ -7,7 +7,7 @@ import '../../services/friendship_service.dart';
 
 /// Ecran pentru afișarea notificărilor filtrate pe categorie
 class NotificationsScreen extends ConsumerStatefulWidget {
-  final String? category; // 'chat', 'sports', 'learn', sau null pentru toate
+  final String? category; // 'chat' sau null pentru toate
 
   const NotificationsScreen({
     super.key,
@@ -51,10 +51,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     switch (widget.category) {
       case 'chat':
         return 'Friend Requests';
-      case 'sports':
-        return 'Sports Updates';
-      case 'learn':
-        return 'Learning Updates';
       default:
         return 'Notifications';
     }
@@ -62,15 +58,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   IconData _getCategoryIcon(String type) {
     if (type.startsWith('friend')) return Icons.person_add;
-    if (type.startsWith('sports')) return Icons.sports_soccer;
-    if (type.startsWith('learn')) return Icons.school;
     return Icons.notifications;
   }
 
   Color _getCategoryColor(String type, ColorScheme colorScheme) {
     if (type.startsWith('friend')) return Colors.green;
-    if (type.startsWith('sports')) return Colors.blue;
-    if (type.startsWith('learn')) return Colors.orange;
     return colorScheme.primary;
   }
 
@@ -153,12 +145,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     switch (widget.category) {
       case 'chat':
         notificationsAsync = ref.watch(chatNotificationsProvider);
-        break;
-      case 'sports':
-        notificationsAsync = ref.watch(sportsNotificationsProvider);
-        break;
-      case 'learn':
-        notificationsAsync = ref.watch(learnNotificationsProvider);
         break;
       default:
         notificationsAsync = ref.watch(allNotificationsProvider);

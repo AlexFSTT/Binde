@@ -113,31 +113,11 @@ class NotificationService {
       enableVibration: true,
     );
 
-    const sportsChannel = AndroidNotificationChannel(
-      'sports_notifications',
-      'Sports Updates',
-      description: 'Notifications for sports news and live events',
-      importance: Importance.high,
-      playSound: true,
-      enableVibration: true,
-    );
-
-    const learnChannel = AndroidNotificationChannel(
-      'learn_notifications',
-      'Learning Updates',
-      description: 'Notifications for new lessons and updates',
-      importance: Importance.defaultImportance,
-      playSound: true,
-      enableVibration: false,
-    );
-
     final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
     await androidPlugin?.createNotificationChannel(chatChannel);
-    await androidPlugin?.createNotificationChannel(sportsChannel);
-    await androidPlugin?.createNotificationChannel(learnChannel);
   }
 
   Future<void> _configureFCM() async {
@@ -356,13 +336,9 @@ class NotificationService {
     final androidDetails = AndroidNotificationDetails(
       channelId,
       channelName,
-      channelDescription: 'Notifications for $category',
-      importance: category == 'sports'
-          ? Importance.high
-          : Importance.defaultImportance,
-      priority: category == 'sports'
-          ? Priority.high
-          : Priority.defaultPriority,
+      channelDescription: 'Notifications',
+      importance: Importance.high,
+      priority: Priority.high,
       showWhen: true,
     );
 
@@ -387,25 +363,11 @@ class NotificationService {
   }
 
   String _getChannelId(String category) {
-    switch (category) {
-      case 'sports':
-        return 'sports_notifications';
-      case 'learn':
-        return 'learn_notifications';
-      default:
-        return 'chat_notifications';
-    }
+    return 'chat_notifications';
   }
 
   String _getChannelName(String category) {
-    switch (category) {
-      case 'sports':
-        return 'Sports Updates';
-      case 'learn':
-        return 'Learning Updates';
-      default:
-        return 'Friend Requests';
-    }
+    return 'Friend Requests';
   }
 
   void _onNotificationTapped(NotificationResponse response) {

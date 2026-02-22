@@ -31,28 +31,6 @@ final chatNotificationsProvider =
   }
 });
 
-/// SPORTS
-final sportsNotificationsProvider =
-    StreamProvider.autoDispose<List<NotificationModel>>((ref) async* {
-  final service = ref.watch(notificationServiceProvider);
-  yield await service.loadNotifications(category: 'sports');
-
-  await for (final _ in service.refreshStream) {
-    yield await service.loadNotifications(category: 'sports');
-  }
-});
-
-/// LEARN
-final learnNotificationsProvider =
-    StreamProvider.autoDispose<List<NotificationModel>>((ref) async* {
-  final service = ref.watch(notificationServiceProvider);
-  yield await service.loadNotifications(category: 'learn');
-
-  await for (final _ in service.refreshStream) {
-    yield await service.loadNotifications(category: 'learn');
-  }
-});
-
 /// Unread count CHAT (doar friend requests, pentru clopotel)
 final chatUnreadCountProvider = StreamProvider.autoDispose<int>((ref) async* {
   final service = ref.watch(notificationServiceProvider);
@@ -63,28 +41,7 @@ final chatUnreadCountProvider = StreamProvider.autoDispose<int>((ref) async* {
   }
 });
 
-/// Unread count SPORTS
-final sportsUnreadCountProvider = StreamProvider.autoDispose<int>((ref) async* {
-  final service = ref.watch(notificationServiceProvider);
-  yield await service.getUnreadCount(category: 'sports');
-
-  await for (final _ in service.refreshStream) {
-    yield await service.getUnreadCount(category: 'sports');
-  }
-});
-
-/// Unread count LEARN
-final learnUnreadCountProvider = StreamProvider.autoDispose<int>((ref) async* {
-  final service = ref.watch(notificationServiceProvider);
-  yield await service.getUnreadCount(category: 'learn');
-
-  await for (final _ in service.refreshStream) {
-    yield await service.getUnreadCount(category: 'learn');
-  }
-});
-
-/// ✅ NOU: Provider pentru mesaje necitite (pentru badge pe Chat tab)
-/// Ascultă la schimbări în timp real în tabela messages
+/// ✅ Provider pentru mesaje necitite (pentru badge pe Chat tab)
 final unreadMessagesCountProvider = StreamProvider.autoDispose<int>((ref) async* {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
@@ -94,11 +51,9 @@ final unreadMessagesCountProvider = StreamProvider.autoDispose<int>((ref) async*
     return;
   }
 
-  // Încarcă numărul inițial de mesaje necitite
   final initialCount = await _getUnreadMessagesCount(supabase, userId);
   yield initialCount;
 
-  // ✅ REALTIME: La orice schimbare în messages → reîncarcă count-ul
   await for (final _ in supabase
       .from('messages')
       .stream(primaryKey: ['id'])) {
@@ -124,7 +79,7 @@ Future<int> _getUnreadMessagesCount(SupabaseClient supabase, String userId) asyn
 }
 
 // =====================================================
-// ✅ COUNT PROVIDERS (pentru counter badges)
+// COUNT PROVIDERS (pentru counter badges)
 // =====================================================
 
 /// 🔔 Count pentru clopotel = doar friend requests necitite
@@ -151,18 +106,8 @@ final chatBadgeCountProvider = Provider<int>((ref) {
   return notificationCount + messagesCount;
 });
 
-/// 📚 Count pentru Learn tab
-final learnBadgeCountProvider = Provider<int>((ref) {
-  final count = ref.watch(learnUnreadCountProvider);
-  return count.when(
-    data: (c) => c,
-    loading: () => 0,
-    error: (_, _) => 0,
-  );
-});
-
 // =====================================================
-// BOOLEAN PROVIDERS (backward compatibility)
+// BOOLEAN PROVIDERS
 // =====================================================
 
 /// Badge boolean pentru clopotel (doar friend requests)
@@ -170,27 +115,12 @@ final hasChatUnreadNotificationsProvider = Provider<bool>((ref) {
   return ref.watch(chatNotificationCountProvider) > 0;
 });
 
-final hasSportsUnreadNotificationsProvider = Provider<bool>((ref) {
-  final count = ref.watch(sportsUnreadCountProvider);
-  return count.when(
-    data: (c) => c > 0,
-    loading: () => false,
-    error: (_, _) => false,
-  );
-});
-
-final hasLearnUnreadNotificationsProvider = Provider<bool>((ref) {
-  return ref.watch(learnBadgeCountProvider) > 0;
-});
-
-/// ✅ Badge combinat boolean pentru Chat tab (friend requests + mesaje necitite)
+/// Badge combinat boolean pentru Chat tab (friend requests + mesaje necitite)
 final hasChatBadgeProvider = Provider<bool>((ref) {
   return ref.watch(chatBadgeCountProvider) > 0;
 });
 
+/// Orice notificare necitită
 final hasUnreadNotificationsProvider = Provider<bool>((ref) {
-  final chat = ref.watch(hasChatUnreadNotificationsProvider);
-  final sports = ref.watch(hasSportsUnreadNotificationsProvider);
-  final learn = ref.watch(hasLearnUnreadNotificationsProvider);
-  return chat || sports || learn;
+  return ref.watch(hasChatUnreadNotificationsProvider);
 });

@@ -43,10 +43,8 @@ const Map<String, String> en = {
 
   // Navigation
   'nav_chat': 'Chat',
-  'nav_learn': 'Learn',
   'nav_videos': 'Videos',
   'nav_shop': 'Shop',
-  'nav_sports': 'Sports',
   'nav_games': 'Games',
 
   // Profile
@@ -69,12 +67,6 @@ const Map<String, String> en = {
   'theme_system': 'Follow system theme',
   'help_support': 'Help & Support',
   'about_app': 'About app',
-
-  // Learn
-  'lessons': 'Lessons',
-  'lesson_details': 'Lesson details',
-  'minutes': 'minutes',
-  'no_lessons': 'No lessons available.',
 
   // Videos
   'videos': 'Videos',
@@ -100,21 +92,6 @@ const Map<String, String> en = {
   'out_of_stock': 'Out of stock',
   'items': 'items',
   'no_products': 'No products available.',
-
-  // Sports
-  'sports': 'Sports',
-  'news': 'News',
-  'live': 'Live',
-  'football': 'Football',
-  'f1': 'Formula 1',
-  'tennis': 'Tennis',
-  'live_now': 'LIVE NOW',
-  'upcoming': 'Upcoming',
-  'finished': 'Finished',
-  'watch': 'Watch',
-  'no_news': 'No news available.',
-  'no_events': 'No events available.',
-  'loading_stream': 'Loading live stream...',
 
   // Chat
   'conversations': 'Conversations',
@@ -145,7 +122,7 @@ const Map<String, String> en = {
 // Hamburger Menu
 'about_binde': 'About Binde',
 'binde_tagline': 'Binde - All-in-One Mobile Platform',
-'binde_description': 'A complete platform that combines Chat, Learn, Shop, Sports and much more in a single application.',
+'binde_description': 'A complete platform that combines Chat, Shop and much more in a single application.',
 'version': 'Version',
 
   // Friends & Requests
