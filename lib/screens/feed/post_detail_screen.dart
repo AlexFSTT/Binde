@@ -3,6 +3,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../models/post_model.dart';
 import '../../services/feed_service.dart';
 import 'user_posts_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Ecran detaliu postare cu comentarii
 class PostDetailScreen extends StatefulWidget {
@@ -125,7 +126,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Post')),
+        appBar: AppBar(title: Text(context.tr('post'))),
         body: Column(
           children: [
             Expanded(
@@ -477,7 +478,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               focusNode: _commentFocus,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                hintText: 'Write a comment...',
+                hintText: context.tr('write_comment'),
                 hintStyle: TextStyle(
                   color: colorScheme.onSurface.withValues(alpha: 0.35),
                   fontSize: 14,

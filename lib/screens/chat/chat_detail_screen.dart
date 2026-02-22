@@ -348,8 +348,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Friend request sent!'),
+        SnackBar(
+          content: Text(context.tr('friend_request_sent')),
           backgroundColor: Colors.green,
         ),
       );
@@ -357,8 +357,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       // dar nu 'friend' până când receiver-ul acceptă)
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to send friend request'),
+        SnackBar(
+          content: Text(context.tr('failed_send_friend_request')),
           backgroundColor: Colors.red,
         ),
       );
@@ -375,16 +375,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Unblock User'),
-        content: Text('Unblock $friendName and restore friendship?'),
+        title: Text(context.tr('unblock_user')),
+        content: Text('${context.tr('unblock')} $friendName ${context.tr('unblock_restore_friendship')}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Unblock'),
+            child: Text(context.tr('unblock')),
           ),
         ],
       ),
@@ -400,7 +400,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() => _relationshipStatus = 'friend');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$friendName unblocked! Friendship restored.'),
+          content: Text('$friendName ${context.tr('unblocked_restored')}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -440,7 +440,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.person_remove, color: Colors.orange, size: 40),
-        title: const Text('Unfriend'),
+        title: Text(context.tr('unfriend')),
         content: Text(
           'Are you sure you want to remove $friendName from your friends?\n\n'
           'You can send a new friend request later.',
@@ -448,12 +448,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('Unfriend'),
+            child: Text(context.tr('unfriend')),
           ),
         ],
       ),
@@ -469,14 +469,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() => _relationshipStatus = 'none');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$friendName removed from friends'),
+          content: Text('$friendName ${context.tr('removed_from_friends')}'),
           backgroundColor: Colors.orange,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to remove friend'),
+        SnackBar(
+          content: Text(context.tr('failed_remove_friend')),
           backgroundColor: Colors.red,
         ),
       );
@@ -495,7 +495,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         icon: Icon(Icons.block, color: colorScheme.error, size: 40),
-        title: const Text('Block User'),
+        title: Text(context.tr('block_user')),
         content: Text(
           'Are you sure you want to block $friendName?\n\n'
           'This will:\n'
@@ -507,12 +507,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
-            child: const Text('Block'),
+            child: Text(context.tr('block')),
           ),
         ],
       ),
@@ -528,14 +528,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() => _relationshipStatus = 'blocked');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$friendName has been blocked'),
+          content: Text('$friendName ${context.tr('has_been_blocked')}'),
           backgroundColor: colorScheme.error,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to block user'),
+        SnackBar(
+          content: Text(context.tr('failed_block_user')),
           backgroundColor: Colors.red,
         ),
       );
@@ -625,13 +625,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             itemBuilder: (context) => [
               // Unfriend - doar dacă sunt prieteni
               if (_relationshipStatus == 'friend')
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'unfriend',
                   child: Row(
                     children: [
-                      Icon(Icons.person_remove, color: Colors.orange, size: 20),
-                      SizedBox(width: 12),
-                      Text('Unfriend'),
+                      const Icon(Icons.person_remove, color: Colors.orange, size: 20),
+                      const SizedBox(width: 12),
+                      Text(context.tr('unfriend')),
                     ],
                   ),
                 ),

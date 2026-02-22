@@ -78,8 +78,8 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to unblock user'),
+        SnackBar(
+          content: Text(context.tr('failed_unblock_user')),
           backgroundColor: Colors.red,
         ),
       );
@@ -92,7 +92,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Blocked Users'),
+        title: Text(context.tr('blocked_users')),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

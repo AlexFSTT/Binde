@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/cart_provider.dart';
 import 'checkout_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -15,7 +16,7 @@ class CartScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Coșul meu'),
+        title: Text(context.tr('my_cart')),
         actions: [
           if (cart.isNotEmpty)
             IconButton(
@@ -264,12 +265,12 @@ class CartScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Golește coșul?'),
-        content: const Text('Ești sigur că vrei să ștergi toate produsele din coș?'),
+        title: Text(context.tr('clear_cart')),
+        content: Text(context.tr('clear_cart_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Anulează'),
+            child: Text(context.tr('cancel')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -277,7 +278,7 @@ class CartScreen extends ConsumerWidget {
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Golește'),
+            child: Text(context.tr('clear')),
           ),
         ],
       ),

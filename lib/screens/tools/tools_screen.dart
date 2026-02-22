@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Screen placeholder pentru Tools (va fi implementat în viitor)
 class ToolsScreen extends StatelessWidget {
@@ -10,7 +11,7 @@ class ToolsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tools'),
+        title: Text(context.tr('tools')),
       ),
       body: Center(
         child: Padding(

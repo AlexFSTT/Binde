@@ -321,7 +321,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ListTile(
               leading: const Icon(Icons.translate),
               title: Text(context.tr('theme_auto')),
-              subtitle: const Text('Detectează automat'),
+              subtitle: Text(context.tr('auto_detect')),
               trailing: settings.languageCode == null 
                   ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
                   : null,

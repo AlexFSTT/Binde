@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import 'cart_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
   final Product product;
@@ -25,13 +26,13 @@ class ProductDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detalii produs'),
+        title: Text(context.tr('product_details')),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Distribuire - în curând!')),
+                SnackBar(content: Text(context.tr('share_coming_soon'))),
               );
             },
           ),
@@ -209,7 +210,7 @@ class ProductDetailScreen extends ConsumerWidget {
                           );
                         },
                         icon: const Icon(Icons.shopping_cart),
-                        label: const Text('Vezi coșul'),
+                        label: Text(context.tr('view_cart')),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
@@ -227,7 +228,7 @@ class ProductDetailScreen extends ConsumerWidget {
                                 cartNotifier.addToCart(product);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('${product.name} adăugat în coș!'),
+                                    content: Text('${product.name} ${context.tr('added_to_cart')}'),
                                     action: SnackBarAction(
                                       label: 'VEZI COȘ',
                                       onPressed: () {
@@ -244,7 +245,7 @@ class ProductDetailScreen extends ConsumerWidget {
                               }
                             : null,
                         icon: const Icon(Icons.add_shopping_cart),
-                        label: Text(product.inStock ? 'Adaugă în coș' : 'Indisponibil'),
+                        label: Text(product.inStock ? context.tr('add_to_cart') : context.tr('unavailable')),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),

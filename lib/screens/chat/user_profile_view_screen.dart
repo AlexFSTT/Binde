@@ -398,7 +398,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
       setState(() => _isFriend = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$userName removed from friends'),
+          content: Text('$userName ${context.tr('removed_from_friends')}'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -458,7 +458,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.tr('unblock_user')),
-        content: Text('Are you sure you want to unblock $userName?'),
+        content: Text('${context.tr('confirm_unblock')} $userName?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

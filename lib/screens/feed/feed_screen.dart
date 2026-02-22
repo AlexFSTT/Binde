@@ -5,6 +5,7 @@ import '../../services/feed_service.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 import 'user_posts_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Ecranul principal de Feed (Facebook-like)
 class FeedScreen extends StatefulWidget {
@@ -109,16 +110,16 @@ class _FeedScreenState extends State<FeedScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete post?'),
-        content: const Text('This action cannot be undone.'),
+        title: Text(context.tr('delete_post_confirm')),
+        content: Text(context.tr('action_cannot_undo')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete',
+            child: Text(context.tr('delete'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
@@ -131,7 +132,7 @@ class _FeedScreenState extends State<FeedScreen> {
         setState(() => _posts.removeAt(index));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Post deleted')),
+            SnackBar(content: Text(context.tr('post_deleted'))),
           );
         }
       }
@@ -188,7 +189,7 @@ class _FeedScreenState extends State<FeedScreen> {
           IconButton(
             icon: const Icon(Icons.add_box_outlined),
             onPressed: _openCreatePost,
-            tooltip: 'New post',
+            tooltip: context.tr('new_post'),
           ),
         ],
       ),
@@ -254,7 +255,7 @@ class _FeedScreenState extends State<FeedScreen> {
           FilledButton.icon(
             onPressed: _openCreatePost,
             icon: const Icon(Icons.edit, size: 18),
-            label: const Text('Create Post'),
+            label: Text(context.tr('create_post')),
           ),
         ],
       ),
@@ -443,7 +444,7 @@ class _PostCard extends StatelessWidget {
                       Icon(Icons.delete_outline,
                           color: colorScheme.error, size: 20),
                       const SizedBox(width: 12),
-                      Text('Delete post',
+                      Text(context.tr('delete_post'),
                           style: TextStyle(color: colorScheme.error)),
                     ],
                   ),

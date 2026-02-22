@@ -186,7 +186,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         leading: IconButton(
           icon: const Icon(Icons.people_outline),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-          tooltip: 'Friends',
+          tooltip: context.tr('friends'),
         ),
         title: Text(context.tr('nav_chat')),
         actions: [
@@ -208,7 +208,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadConversations,
-            tooltip: 'Refresh',
+            tooltip: context.tr('refresh'),
           ),
         ],
       ),
@@ -245,7 +245,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadConversations,
-              child: const Text('Retry'),
+              child: Text(context.tr('retry')),
             ),
           ],
         ),

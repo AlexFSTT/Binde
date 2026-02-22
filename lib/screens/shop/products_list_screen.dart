@@ -5,6 +5,7 @@ import '../../services/shop_service.dart';
 import '../../providers/cart_provider.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class ProductsListScreen extends ConsumerStatefulWidget {
   const ProductsListScreen({super.key});
@@ -67,7 +68,7 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
 
     return Scaffold(
 appBar: AppBar(
-        title: const Text('Shop'),
+        title: Text(context.tr('shop')),
         actions: [
           // Buton coș cu badge
           Stack(
@@ -129,14 +130,14 @@ appBar: AppBar(
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text('Eroare la încărcare', style: Theme.of(context).textTheme.titleLarge),
+            Text(context.tr('error_loading'), style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(_error ?? 'Eroare necunoscută', textAlign: TextAlign.center),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadData,
               icon: const Icon(Icons.refresh),
-              label: const Text('Încearcă din nou'),
+              label: Text(context.tr('try_again')),
             ),
           ],
         ),
@@ -155,7 +156,7 @@ appBar: AppBar(
             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
-          const Text('Nu există produse disponibile.'),
+          Text(context.tr('no_products')),
         ],
       ),
     );
@@ -177,7 +178,7 @@ appBar: AppBar(
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
-                      label: const Text('Toate'),
+                      label: Text(context.tr('all')),
                       selected: _selectedCategory == null,
                       onSelected: (selected) {
                         setState(() => _selectedCategory = null);

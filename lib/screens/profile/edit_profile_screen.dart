@@ -136,9 +136,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final result = await _profileService.uploadAvatar(picked.path);
       setState(() => _isUploadingAvatar = false);
 
+      if (!mounted) return;
       if (result.isSuccess) {
         setState(() => _avatarUrl = result.message);
-        _showSnack('Avatar updated!', true);
+        _showSnack(context.tr('avatar_updated'), true);
       } else {
         _showSnack(result.message, false);
       }
@@ -166,9 +167,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final result = await _profileService.uploadCover(picked.path);
       setState(() => _isUploadingCover = false);
 
+      if (!mounted) return;
       if (result.isSuccess) {
         setState(() => _coverUrl = result.message);
-        _showSnack('Cover photo updated!', true);
+        _showSnack(context.tr('cover_updated'), true);
       } else {
         _showSnack(result.message, false);
       }
@@ -186,18 +188,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera),
-              title: const Text('Camera'),
+              title: Text(context.tr('camera')),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Gallery'),
+              title: Text(context.tr('gallery')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             if (showDelete)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                title: Text(context.tr('delete'), style: const TextStyle(color: Colors.red)),
                 onTap: () => Navigator.pop(context, null),
               ),
           ],
@@ -325,7 +327,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const SizedBox(height: 16),
 
                           // ====== BASIC INFO ======
-                          _sectionTitle('Basic Info', cs),
+                          _sectionTitle(context.tr('section_basic_info'), cs),
                           const SizedBox(height: 12),
                           _buildUsernameField(),
                           const SizedBox(height: 14),
@@ -342,27 +344,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const SizedBox(height: 28),
 
                           // ====== LOCATION ======
-                          _sectionTitle('Location', cs),
+                          _sectionTitle(context.tr('section_location'), cs),
                           const SizedBox(height: 12),
-                          _buildField(_currentCityController, 'Current city', Icons.location_on_outlined),
+                          _buildField(_currentCityController, context.tr('current_city'), Icons.location_on_outlined),
                           const SizedBox(height: 14),
-                          _buildField(_birthCityController, 'Hometown', Icons.home_outlined),
+                          _buildField(_birthCityController, context.tr('hometown'), Icons.home_outlined),
 
                           const SizedBox(height: 28),
 
                           // ====== WORK & EDUCATION ======
-                          _sectionTitle('Work & Education', cs),
+                          _sectionTitle(context.tr('section_work_education'), cs),
                           const SizedBox(height: 12),
-                          _buildField(_jobTitleController, 'Job title', Icons.work_outline),
+                          _buildField(_jobTitleController, context.tr('job_title'), Icons.work_outline),
                           const SizedBox(height: 14),
-                          _buildField(_jobCompanyController, 'Company', Icons.business_outlined),
+                          _buildField(_jobCompanyController, context.tr('company'), Icons.business_outlined),
                           const SizedBox(height: 14),
-                          _buildField(_schoolController, 'School / University', Icons.school_outlined),
+                          _buildField(_schoolController, context.tr('school_university'), Icons.school_outlined),
 
                           const SizedBox(height: 28),
 
                           // ====== RELATIONSHIP ======
-                          _sectionTitle('Relationship', cs),
+                          _sectionTitle(context.tr('section_relationship'), cs),
                           const SizedBox(height: 12),
                           _buildDropdown('Relationship status', _relationshipStatus, [
                             'Single', 'In a relationship', 'Engaged', 'Married',
@@ -370,44 +372,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ], (v) => setState(() => _relationshipStatus = v), cs),
                           if (_relationshipStatus != null && _relationshipStatus != 'Single') ...[
                             const SizedBox(height: 14),
-                            _buildField(_relationshipPartnerController, 'Partner name', Icons.favorite_outline),
+                            _buildField(_relationshipPartnerController, context.tr('partner_name'), Icons.favorite_outline),
                           ],
 
                           const SizedBox(height: 28),
 
                           // ====== ABOUT YOU ======
-                          _sectionTitle('About You', cs),
+                          _sectionTitle(context.tr('section_about_you'), cs),
                           const SizedBox(height: 12),
-                          _buildField(_religionController, 'Religion', Icons.church_outlined),
+                          _buildField(_religionController, context.tr('religion'), Icons.church_outlined),
                           const SizedBox(height: 14),
-                          _buildField(_languagesController, 'Languages spoken', Icons.translate),
+                          _buildField(_languagesController, context.tr('languages_spoken'), Icons.translate),
 
                           const SizedBox(height: 28),
 
                           // ====== INTERESTS ======
-                          _sectionTitle('Interests', cs),
+                          _sectionTitle(context.tr('section_interests'), cs),
                           const SizedBox(height: 12),
-                          _buildField(_favoriteSportsController, 'Favorite sports', Icons.sports_soccer_outlined),
+                          _buildField(_favoriteSportsController, context.tr('favorite_sports'), Icons.sports_soccer_outlined),
                           const SizedBox(height: 14),
-                          _buildField(_favoriteTeamsController, 'Favorite teams', Icons.shield_outlined),
+                          _buildField(_favoriteTeamsController, context.tr('favorite_teams'), Icons.shield_outlined),
                           const SizedBox(height: 14),
-                          _buildField(_favoriteGamesController, 'Favorite video games', Icons.sports_esports_outlined),
+                          _buildField(_favoriteGamesController, context.tr('favorite_video_games'), Icons.sports_esports_outlined),
 
                           const SizedBox(height: 28),
 
                           // ====== CONTACT & LINKS ======
-                          _sectionTitle('Contact & Links', cs),
+                          _sectionTitle(context.tr('section_contact_links'), cs),
                           const SizedBox(height: 12),
-                          _buildField(_phoneController, 'Phone number', Icons.phone_outlined),
+                          _buildField(_phoneController, context.tr('phone_number'), Icons.phone_outlined),
                           const SizedBox(height: 14),
-                          _buildField(_websiteController, 'Website / Blog', Icons.link),
+                          _buildField(_websiteController, context.tr('website_blog'), Icons.link),
                           const SizedBox(height: 14),
                           _buildDropdown('Contact visibility', _contactVisibility, [
                             'public', 'friends', 'private',
                           ], (v) => setState(() => _contactVisibility = v ?? 'friends'), cs),
                           const SizedBox(height: 6),
                           Text(
-                            'Controls who can see your phone and website',
+                            context.tr('contact_visibility_hint'),
                             style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.4)),
                           ),
 
@@ -526,7 +528,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           Icon(Icons.add_photo_alternate_outlined, size: 36, color: cs.onSurface.withValues(alpha: 0.25)),
           const SizedBox(height: 4),
-          Text('Add cover photo', style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.3))),
+          Text(context.tr('add_cover_photo'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.3))),
         ],
       ),
     );
@@ -561,17 +563,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildUsernameField() {
     return TextFormField(
       controller: _usernameController,
-      decoration: const InputDecoration(
-        labelText: 'Username',
-        hintText: 'Choose a unique username',
+      decoration: InputDecoration(
+        labelText: context.tr('username'),
+        hintText: context.tr('username_hint'),
         prefixText: '@',
         prefixIcon: Icon(Icons.alternate_email),
       ),
       maxLength: 30,
       validator: (value) {
-        if (value == null || value.trim().isEmpty) return 'Username is required';
-        if (value.trim().length < 3) return 'Minimum 3 characters';
-        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) return 'Only letters, numbers and _';
+        if (value == null || value.trim().isEmpty) return context.tr('username_required');
+        if (value.trim().length < 3) return context.tr('username_min_length');
+        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) return context.tr('username_invalid');
         return null;
       },
     );
@@ -627,8 +629,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return InkWell(
       onTap: _pickBirthDate,
       child: InputDecorator(
-        decoration: const InputDecoration(
-          labelText: 'Birth date',
+        decoration: InputDecoration(
+          labelText: context.tr('birth_date'),
           prefixIcon: Icon(Icons.cake_outlined),
           isDense: true,
         ),
@@ -638,7 +640,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Text(
                 _birthDate != null
                     ? '${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}'
-                    : 'Not set',
+                    : context.tr('not_set'),
                 style: TextStyle(
                   color: _birthDate != null ? cs.onSurface : cs.onSurface.withValues(alpha: 0.4),
                 ),
@@ -670,7 +672,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Email', style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.4))),
+                Text(context.tr('email'), style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.4))),
                 Text(supabase.auth.currentUser?.email ?? 'N/A', style: const TextStyle(fontSize: 14)),
               ],
             ),

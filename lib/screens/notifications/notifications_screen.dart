@@ -4,6 +4,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../models/notification_model.dart';
 import '../../providers/notification_provider.dart';
 import '../../services/friendship_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Ecran pentru afișarea notificărilor filtrate pe categorie
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -34,7 +35,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     await ref.read(notificationServiceProvider).markAllAsRead(category: widget.category);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Toate notificările marcate ca citite')),
+        SnackBar(content: Text(context.tr('all_notifications_read'))),
       );
     }
   }
@@ -87,14 +88,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Friend request accepted from ${notification.data['sender_name'] ?? 'user'}'),
+          content: Text('${context.tr('friend_request_accepted_from')} ${notification.data['sender_name'] ?? 'user'}'),
           backgroundColor: Colors.green,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to accept friend request'),
+        SnackBar(
+          content: Text(context.tr('failed_accept_friend_request')),
           backgroundColor: Colors.red,
         ),
       );
@@ -122,13 +123,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Friend request declined from ${notification.data['sender_name'] ?? 'user'}'),
+          content: Text('${context.tr('friend_request_declined_from')} ${notification.data['sender_name'] ?? 'user'}'),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to decline friend request'),
+        SnackBar(
+          content: Text(context.tr('failed_decline_friend_request')),
           backgroundColor: Colors.red,
         ),
       );
@@ -157,7 +158,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           IconButton(
             icon: const Icon(Icons.done_all),
             onPressed: _markAllAsRead,
-            tooltip: 'Mark all as read',
+            tooltip: context.tr('mark_all_read'),
           ),
         ],
       ),
@@ -261,7 +262,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${notification.title} deleted'),
+              content: Text('${notification.title} ${context.tr('deleted')}'),
             ),
           );
         }
@@ -338,7 +339,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             child: ElevatedButton.icon(
                               onPressed: () => _acceptFriendRequest(notification),
                               icon: const Icon(Icons.check, size: 18),
-                              label: const Text('Accept'),
+                              label: Text(context.tr('accept')),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
@@ -351,7 +352,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             child: OutlinedButton.icon(
                               onPressed: () => _declineFriendRequest(notification),
                               icon: const Icon(Icons.close, size: 18),
-                              label: const Text('Decline'),
+                              label: Text(context.tr('decline')),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: colorScheme.error,
                                 side: BorderSide(color: colorScheme.error),

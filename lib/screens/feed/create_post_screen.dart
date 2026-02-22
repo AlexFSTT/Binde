@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/feed_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Ecran pentru crearea unei postări noi
 class CreatePostScreen extends StatefulWidget {
@@ -101,8 +102,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         Navigator.pop(context, post);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create post'),
+          SnackBar(
+            content: Text(context.tr('failed_create_post')),
             backgroundColor: Colors.red,
           ),
         );
@@ -116,7 +117,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Post'),
+        title: Text(context.tr('create_post')),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -133,7 +134,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Post'),
+                  : Text(context.tr('post')),
             ),
           ),
         ],
@@ -235,7 +236,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     minLines: 4,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: "What's on your mind?",
+                      hintText: context.tr('whats_on_your_mind'),
                       hintStyle: TextStyle(
                         color: colorScheme.onSurface.withValues(alpha: 0.35),
                         fontSize: 18,
@@ -306,7 +307,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   onPressed: _pickImage,
                   icon: Icon(Icons.image_outlined,
                       color: Colors.green[600], size: 26),
-                  tooltip: 'Add photo',
+                  tooltip: context.tr('add_photo'),
                 ),
                 const Spacer(),
                 // Visibility indicator

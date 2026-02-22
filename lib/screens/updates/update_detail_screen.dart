@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/update_model.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Screen pentru detaliile unui Update
 class UpdateDetailScreen extends StatelessWidget {
@@ -16,7 +17,7 @@ class UpdateDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Update Details'),
+        title: Text(context.tr('update_detail')),
       ),
       body: SingleChildScrollView(
         child: Column(

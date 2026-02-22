@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/cart_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -25,7 +26,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Finalizare comandă'),
+        title: Text(context.tr('checkout')),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -54,7 +55,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 children: [
                   ...cart.map((item) => ListTile(
                     title: Text(item.product.name),
-                    subtitle: Text('Cantitate: ${item.quantity}'),
+                    subtitle: Text('${context.tr('quantity')}: ${item.quantity}'),
                     trailing: Text(
                       item.formattedTotalPrice,
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -197,7 +198,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: const Text('Înapoi la Shop'),
+                    child: Text(context.tr('back_to_shop')),
                   ),
                 ),
               ],

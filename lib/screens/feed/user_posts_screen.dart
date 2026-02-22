@@ -7,6 +7,7 @@ import '../../services/feed_service.dart';
 import '../../services/friendship_service.dart';
 import '../../services/profile_service.dart';
 import 'post_detail_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Ecran profil user cu postări (Facebook-like)
 class UserPostsScreen extends StatefulWidget {
@@ -156,7 +157,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     if (success && mounted) {
       setState(() => _relationshipStatus = 'pending');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Friend request sent!')),
+        SnackBar(content: Text(context.tr('friend_request_sent'))),
       );
     }
   }
@@ -192,7 +193,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open link')),
+          SnackBar(content: Text(context.tr('could_not_open_link'))),
         );
       }
     }
@@ -238,7 +239,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text('Posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
+                child: Text(context.tr('posts'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
               ),
             ),
 
@@ -253,7 +254,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                     children: [
                       Icon(Icons.article_outlined, size: 60, color: cs.onSurface.withValues(alpha: 0.15)),
                       const SizedBox(height: 12),
-                      Text('No posts yet', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35), fontSize: 16)),
+                      Text(context.tr('no_posts_yet'), style: TextStyle(color: cs.onSurface.withValues(alpha: 0.35), fontSize: 16)),
                     ],
                   ),
                 ),
@@ -449,12 +450,12 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
 
     // Current city
     if (_profile?['current_city'] != null && _profile!['current_city'].toString().isNotEmpty) {
-      details.add(_DetailItem(Icons.location_on_outlined, 'Lives in ${_profile!['current_city']}'));
+      details.add(_DetailItem(Icons.location_on_outlined, '${context.tr('lives_in')} ${_profile!['current_city']}'));
     }
 
     // Birth city
     if (_profile?['birth_city'] != null && _profile!['birth_city'].toString().isNotEmpty) {
-      details.add(_DetailItem(Icons.home_outlined, 'From ${_profile!['birth_city']}'));
+      details.add(_DetailItem(Icons.home_outlined, '${context.tr('from_city')} ${_profile!['birth_city']}'));
     }
 
     // Relationship
@@ -473,7 +474,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
 
     // Languages
     if (_profile?['languages'] != null && _profile!['languages'].toString().isNotEmpty) {
-      details.add(_DetailItem(Icons.translate, 'Speaks ${_profile!['languages']}'));
+      details.add(_DetailItem(Icons.translate, '${context.tr('speaks')} ${_profile!['languages']}'));
     }
 
     // Sports
@@ -508,7 +509,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Text('Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withValues(alpha: 0.7))),
+        Text(context.tr('details'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withValues(alpha: 0.7))),
         const SizedBox(height: 10),
         ...details.map((d) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -553,7 +554,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           child: OutlinedButton.icon(
             onPressed: null,
             icon: Icon(Icons.check_circle, size: 18, color: cs.primary),
-            label: Text('Friends', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+            label: Text(context.tr('friends'), style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: cs.primary.withValues(alpha: 0.3)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -568,7 +569,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           child: OutlinedButton.icon(
             onPressed: null,
             icon: Icon(Icons.hourglass_top, size: 18, color: Colors.orange[700]),
-            label: Text('Request sent', style: TextStyle(color: Colors.orange[700], fontWeight: FontWeight.w600)),
+            label: Text(context.tr('request_sent'), style: TextStyle(color: Colors.orange[700], fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -584,7 +585,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           child: OutlinedButton.icon(
             onPressed: null,
             icon: Icon(Icons.block, size: 18, color: cs.error),
-            label: Text('Blocked', style: TextStyle(color: cs.error, fontWeight: FontWeight.w600)),
+            label: Text(context.tr('blocked'), style: TextStyle(color: cs.error, fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: cs.error.withValues(alpha: 0.3)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -600,7 +601,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           child: FilledButton.icon(
             onPressed: _sendFriendRequest,
             icon: const Icon(Icons.person_add, size: 18),
-            label: const Text('Add Friend'),
+            label: Text(context.tr('add_friend')),
             style: FilledButton.styleFrom(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -679,7 +680,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                   ],
                   if (post.likeCount > 0 && post.commentCount > 0) const Spacer(),
                   if (post.commentCount > 0)
-                    Text('${post.commentCount} comment${post.commentCount == 1 ? '' : 's'}',
+                    Text('${post.commentCount} ${post.commentCount == 1 ? context.tr('comment_singular') : context.tr('comment_plural')}',
                         style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 12)),
                 ],
               ),
@@ -698,7 +699,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                     size: 19,
                     color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45),
                   ),
-                  label: Text('Like', style: TextStyle(
+                  label: Text(context.tr('like'), style: TextStyle(
                     color: post.isLikedByMe ? Colors.red[400] : cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
                 ),
               ),
@@ -706,7 +707,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
                 child: TextButton.icon(
                   onPressed: () => _openPostDetail(index),
                   icon: Icon(Icons.chat_bubble_outline, size: 19, color: cs.onSurface.withValues(alpha: 0.45)),
-                  label: Text('Comment', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
+                  label: Text(context.tr('comment'), style: TextStyle(color: cs.onSurface.withValues(alpha: 0.45), fontSize: 13)),
                 ),
               ),
             ],
@@ -722,13 +723,13 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete post?'),
-        content: const Text('This action cannot be undone.'),
+        title: Text(context.tr('delete_post_confirm')),
+        content: Text(context.tr('action_cannot_undo')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.tr('cancel'))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(context.tr('delete'), style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),

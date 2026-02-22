@@ -4,6 +4,7 @@ import '../../models/friendship_model.dart';
 import '../../services/friendship_service.dart';
 import '../../services/chat_service.dart';
 import '../../screens/chat/chat_detail_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Drawer pentru lista de prieteni
 /// ✅ REALTIME: Statusul online/offline se actualizează INSTANT
@@ -130,7 +131,7 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
       Navigator.pop(context);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to open chat: $e')),
+        SnackBar(content: Text('${context.tr('failed_open_chat')}: $e')),
       );
     }
   }
@@ -176,8 +177,8 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
               // Unfriend
               ListTile(
                 leading: const Icon(Icons.person_remove, color: Colors.orange),
-                title: const Text('Unfriend'),
-                subtitle: Text('Remove $friendName from your friends'),
+                title: Text(context.tr('unfriend')),
+                subtitle: Text('${context.tr('remove_from_friends')} $friendName'),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmUnfriend(friend);
@@ -190,7 +191,7 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
                   'Block user',
                   style: TextStyle(color: colorScheme.error),
                 ),
-                subtitle: Text('Block $friendName and remove from friends'),
+                subtitle: Text('${context.tr('block_and_remove')} $friendName'),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmBlock(friend);
@@ -212,7 +213,7 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.person_remove, color: Colors.orange, size: 40),
-        title: const Text('Unfriend'),
+        title: Text(context.tr('unfriend')),
         content: Text(
           'Are you sure you want to remove $friendName from your friends?\n\n'
           'You can send a new friend request later.',
@@ -220,14 +221,14 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.orange,
             ),
-            child: const Text('Unfriend'),
+            child: Text(context.tr('unfriend')),
           ),
         ],
       ),
@@ -245,14 +246,14 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$friendName removed from friends'),
+          content: Text('$friendName ${context.tr('removed_from_friends')}'),
           backgroundColor: Colors.orange,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to remove friend'),
+        SnackBar(
+          content: Text(context.tr('failed_remove_friend')),
           backgroundColor: Colors.red,
         ),
       );
@@ -268,7 +269,7 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
       context: context,
       builder: (context) => AlertDialog(
         icon: Icon(Icons.block, color: colorScheme.error, size: 40),
-        title: const Text('Block User'),
+        title: Text(context.tr('block_user')),
         content: Text(
           'Are you sure you want to block $friendName?\n\n'
           'This will:\n'
@@ -280,14 +281,14 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
               backgroundColor: colorScheme.error,
             ),
-            child: const Text('Block'),
+            child: Text(context.tr('block')),
           ),
         ],
       ),
@@ -305,14 +306,14 @@ class _FriendsDrawerState extends State<FriendsDrawer> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$friendName has been blocked'),
+          content: Text('$friendName ${context.tr('has_been_blocked')}'),
           backgroundColor: colorScheme.error,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to block user'),
+        SnackBar(
+          content: Text(context.tr('failed_block_user')),
           backgroundColor: Colors.red,
         ),
       );

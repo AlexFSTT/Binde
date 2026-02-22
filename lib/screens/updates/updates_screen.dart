@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/update_model.dart';
 import '../../services/updates_service.dart';
 import 'update_detail_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Screen pentru lista de Update-uri despre aplicație
 class UpdatesScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App Updates'),
+        title: Text(context.tr('app_updates')),
       ),
       body: _buildBody(colorScheme),
     );
@@ -86,7 +87,7 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
             ElevatedButton.icon(
               onPressed: _loadUpdates,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(context.tr('retry')),
             ),
           ],
         ),
