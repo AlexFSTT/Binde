@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../models/post_model.dart';
 import '../../services/feed_service.dart';
 
 /// Ecran pentru crearea unei postări noi
