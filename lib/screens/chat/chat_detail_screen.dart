@@ -209,6 +209,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     content,
                     is_read,
                     created_at,
+                    message_type,
+                    attachment_url,
+                    file_name,
+                    file_size,
                     sender:profiles!messages_sender_id_fkey(
                       full_name,
                       avatar_url
