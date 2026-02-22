@@ -223,31 +223,11 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ✅ AppBar fără titlu (numele e în header)
-            SliverAppBar(
-              expandedHeight: 200,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                background: _coverUrl != null && _showFullProfile
-                    ? Image.network(_coverUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: cs.surfaceContainerHighest))
-                    : Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              cs.primary.withValues(alpha: 0.3),
-                              cs.surfaceContainerHighest,
-                            ],
-                          ),
-                        ),
-                      ),
-              ),
-            ),
+            // ✅ Cover + Avatar overlap (Facebook-style)
+            SliverToBoxAdapter(child: _buildCoverAndAvatar(cs)),
 
-            // ✅ Avatar care depășește cover-ul + profile info
-            SliverToBoxAdapter(child: _buildProfileHeader(cs)),
+            // Profile info
+            SliverToBoxAdapter(child: _buildProfileInfo(cs)),
 
             // Separator
             SliverToBoxAdapter(
@@ -302,79 +282,146 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
   }
 
   // =====================================================
-  // PROFILE HEADER — avatar depășește cover-ul
+  // COVER + AVATAR (Facebook-style overlap)
   // =====================================================
 
-  Widget _buildProfileHeader(ColorScheme cs) {
+  Widget _buildCoverAndAvatar(ColorScheme cs) {
+    return SizedBox(
+      height: 240,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Cover photo — 180px
+          Container(
+            height: 180,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+            ),
+            child: _coverUrl != null && _showFullProfile
+                ? Image.network(_coverUrl!, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(color: cs.surfaceContainerHighest))
+                : Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          cs.primary.withValues(alpha: 0.3),
+                          cs.surfaceContainerHighest,
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+
+          // Bottom area behind avatar+name (matches cover tone)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 60,
+            child: Container(color: cs.surfaceContainerHighest),
+          ),
+
+          // Back button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 4,
+            left: 4,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+
+          // Avatar
+          Positioned(
+            bottom: 0,
+            left: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: cs.surfaceContainerHighest, width: 4),
+              ),
+              child: CircleAvatar(
+                radius: 46,
+                backgroundColor: _showFullProfile ? cs.primaryContainer : cs.surfaceContainerHighest,
+                backgroundImage: _showFullProfile && _avatarUrl != null
+                    ? NetworkImage(_avatarUrl!)
+                    : null,
+                child: _showFullProfile && _avatarUrl == null
+                    ? Text(_fullName[0].toUpperCase(),
+                        style: TextStyle(color: cs.onPrimaryContainer, fontSize: 32, fontWeight: FontWeight.bold))
+                    : !_showFullProfile
+                        ? Icon(Icons.person, size: 36, color: cs.onSurface.withValues(alpha: 0.25))
+                        : null,
+              ),
+            ),
+          ),
+
+          // Name + username — next to avatar
+          Positioned(
+            bottom: 8,
+            left: 120, // 16 (avatar left) + 4 (border) + 92 (avatar diameter) + 8 (gap)
+            right: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _fullName,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (_profile?['username'] != null)
+                  Text(
+                    '@${_profile!['username']}',
+                    style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5)),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // PROFILE INFO (bio, relationship, details — no name)
+  // =====================================================
+
+  Widget _buildProfileInfo(ColorScheme cs) {
     return Container(
       color: cs.surface,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ Stack: avatar care urcă peste cover cu 30px
-          Transform.translate(
-            offset: const Offset(0, -36),
-            child: Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: cs.surface, width: 4),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6)],
-                ),
-                child: CircleAvatar(
-                  radius: 46,
-                  backgroundColor: _showFullProfile ? cs.primaryContainer : cs.surfaceContainerHighest,
-                  backgroundImage: _showFullProfile && _avatarUrl != null
-                      ? NetworkImage(_avatarUrl!)
-                      : null,
-                  child: _showFullProfile && _avatarUrl == null
-                      ? Text(_fullName[0].toUpperCase(),
-                          style: TextStyle(color: cs.onPrimaryContainer, fontSize: 32, fontWeight: FontWeight.bold))
-                      : !_showFullProfile
-                          ? Icon(Icons.person, size: 36, color: cs.onSurface.withValues(alpha: 0.25))
-                          : null,
-                ),
-              ),
-            ),
-          ),
+          // Bio
+          if (_showFullProfile && _bio != null && _bio!.isNotEmpty) ...[
+            Text(_bio!, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.4)),
+            const SizedBox(height: 10),
+          ],
 
-          // Compensăm offset-ul negativ (avatar urcă -36, dar e radius 46 + border 4 = 100 height)
-          // Trebuie un mic padding negativ
-          Transform.translate(
-            offset: const Offset(0, -24),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Nume + username
-                  Text(_fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  if (_profile?['username'] != null)
-                    Text('@${_profile!['username']}',
-                        style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.45))),
+          // Relationship button
+          if (!_isMe && !_isRelationshipLoading) ...[
+            _buildRelationshipButton(cs),
+            const SizedBox(height: 10),
+          ],
 
-                  // Bio
-                  if (_showFullProfile && _bio != null && _bio!.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(_bio!, style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.7), height: 1.4)),
-                  ],
-
-                  // Relationship button
-                  if (!_isMe && !_isRelationshipLoading) ...[
-                    const SizedBox(height: 14),
-                    _buildRelationshipButton(cs),
-                  ],
-
-                  // Details section
-                  if (_showFullProfile) _buildDetailsSection(cs),
-                ],
-              ),
-            ),
-          ),
-
-          // Compensăm spațiul negativ total
-          const SizedBox(height: 0),
+          // Details section
+          if (_showFullProfile) _buildDetailsSection(cs),
         ],
       ),
     );
@@ -614,7 +661,7 @@ class _UserPostsScreenState extends State<UserPostsScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: Image.network(post.imageUrl!, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                    errorBuilder: (_, _, _) => const SizedBox.shrink()),
               ),
             ),
           ],
