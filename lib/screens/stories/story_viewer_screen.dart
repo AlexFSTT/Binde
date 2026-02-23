@@ -462,7 +462,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
               CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         );
       },
-      errorBuilder: (_, __, ___) => const Center(
+      errorBuilder: (_, _, _) => const Center(
         child: Icon(Icons.broken_image, color: Colors.white38, size: 60),
       ),
     );

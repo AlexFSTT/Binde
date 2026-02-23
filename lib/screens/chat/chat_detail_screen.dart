@@ -1372,7 +1372,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
                     );
                   },
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     height: 140,
                     color: colorScheme.surfaceContainerHighest,
                     child: Center(
@@ -1452,7 +1452,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
               );
             },
-            errorBuilder: (_, __, ___) => SizedBox(
+            errorBuilder: (_, _, _) => SizedBox(
               height: 100,
               width: 260,
               child: Center(
@@ -1681,11 +1681,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context,
       PageRouteBuilder(
         opaque: false,
-        pageBuilder: (_, __, ___) => _MediaGalleryScreen(
+        pageBuilder: (_, _, _) => _MediaGalleryScreen(
           mediaMessages: mediaMessages,
           initialIndex: startIndex >= 0 ? startIndex : 0,
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -2207,7 +2207,7 @@ class _GalleryImagePage extends StatelessWidget {
               ),
             );
           },
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             Icons.broken_image_outlined,
             size: 60,
             color: Colors.white.withValues(alpha: 0.3),

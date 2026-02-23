@@ -167,7 +167,7 @@ class ChatService {
         'conversation_id': conversationId,
         'sender_id': currentUserId,
         'content': content,
-        if (replyToStoryId != null) 'reply_to_story_id': replyToStoryId,
+        'reply_to_story_id': ?replyToStoryId,
       };
 
       // 1. Inserăm mesajul nou în tabela messages
