@@ -189,7 +189,7 @@ class StoryService {
       await _supabase.from('story_views').upsert({
         'story_id': storyId,
         'viewer_id': userId,
-      });
+      }, onConflict: 'story_id,viewer_id');
     } catch (e) {
       debugPrint('Error marking story as viewed: $e');
     }
