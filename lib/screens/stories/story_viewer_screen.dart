@@ -250,20 +250,23 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     final text = _replyController.text.trim();
     if (text.isEmpty) return;
 
+    // Capture translations before async
+    final repliedText = context.tr('replied_to_story');
+    final sentText = context.tr('reply_sent');
+
     // Send as a message in conversation with story owner
     try {
-      // Find or create conversation
       final conversation = await _chatService.getOrCreateConversation(
         _currentGroup.userId,
       );
 
-      final replyText = '📖 ${context.tr('replied_to_story')}: $text';
+      final replyText = '📖 $repliedText: $text';
       await _chatService.sendMessage(conversation.id, replyText);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.tr('reply_sent')),
+            content: Text(sentText),
             duration: const Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
           ),

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/story_model.dart';
@@ -130,7 +129,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           content: _textEditController.text.trim(),
           x: 0.5,
           y: 0.4,
-          color: '#${_textColor.value.toRadixString(16).padLeft(8, '0').substring(2)}',
+          color: '#${_textColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
           fontSize: _textFontSize,
           hasBg: _textHasBg,
         ),
