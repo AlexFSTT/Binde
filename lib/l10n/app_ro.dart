@@ -281,4 +281,10 @@ const Map<String, String> ro = {
   'delete_conversation': 'Șterge conversația',
   'delete_conversation_confirm': 'Conversația și toate mesajele vor fi șterse permanent. Acțiunea nu poate fi anulată.',
 
+  // Stories
+  'new_story': 'Story nou',
+  'publish': 'Publică',
+  'create_story_hint': 'Împărtășește un moment care dispare în 24 de ore',
+  'add_text_overlay': 'Adaugă text la story...',
+
 };

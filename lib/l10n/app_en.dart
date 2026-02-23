@@ -281,4 +281,10 @@ const Map<String, String> en = {
   'delete_conversation': 'Delete conversation',
   'delete_conversation_confirm': 'This will permanently delete the entire conversation and all messages. This cannot be undone.',
 
+  // Stories
+  'new_story': 'New Story',
+  'publish': 'Publish',
+  'create_story_hint': 'Share a moment that disappears in 24 hours',
+  'add_text_overlay': 'Add text to your story...',
+
 };

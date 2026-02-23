@@ -7,6 +7,7 @@ import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 import 'user_posts_screen.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/stories/stories_bar.dart';
 
 /// Ecranul principal de Feed — card-based cu reactions & shares
 class FeedScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _hasMore = true;
+  final GlobalKey<StoriesBarState> _storiesBarKey = GlobalKey();
 
   @override
   void initState() {
@@ -78,6 +80,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _onRefresh() async {
+    _storiesBarKey.currentState?.loadStories();
     final posts = await _feedService.getFeedPosts(limit: 20, offset: 0);
     if (mounted) {
       setState(() {
@@ -227,16 +230,38 @@ class _FeedScreenState extends State<FeedScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _posts.isEmpty
-              ? _buildEmptyState(cs)
+              ? RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 8),
+                        child: StoriesBar(key: _storiesBarKey),
+                      ),
+                      _buildEmptyState(cs),
+                    ],
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: _onRefresh,
                   child: ListView.builder(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 16, bottom: 80),
-                    itemCount: _posts.length + (_isLoadingMore ? 1 : 0),
+                    padding: const EdgeInsets.only(top: 0, bottom: 80),
+                    itemCount: _posts.length + 1 + (_isLoadingMore ? 1 : 0), // +1 for stories bar
                     itemBuilder: (context, index) {
-                      if (index == _posts.length) {
+                      // Stories bar at top
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 8),
+                          child: StoriesBar(key: _storiesBarKey),
+                        );
+                      }
+
+                      final postIndex = index - 1;
+
+                      if (postIndex == _posts.length) {
                         return const Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(
@@ -244,15 +269,15 @@ class _FeedScreenState extends State<FeedScreen> {
                         );
                       }
                       return _PostCard(
-                        post: _posts[index],
-                        onReact: (type) => _setReaction(index, type),
-                        onComment: () => _openPostDetail(index),
-                        onShare: () => _toggleShare(index),
-                        onDelete: _posts[index].userId ==
+                        post: _posts[postIndex],
+                        onReact: (type) => _setReaction(postIndex, type),
+                        onComment: () => _openPostDetail(postIndex),
+                        onShare: () => _toggleShare(postIndex),
+                        onDelete: _posts[postIndex].userId ==
                                 _feedService.currentUserId
-                            ? () => _deletePost(index)
+                            ? () => _deletePost(postIndex)
                             : null,
-                        onTapUser: () => _openUserPosts(_posts[index]),
+                        onTapUser: () => _openUserPosts(_posts[postIndex]),
                       );
                     },
                   ),
@@ -261,9 +286,11 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildEmptyState(ColorScheme cs) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.5,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.dynamic_feed_outlined,
               size: 80, color: cs.onSurface.withValues(alpha: 0.2)),
@@ -282,6 +309,7 @@ class _FeedScreenState extends State<FeedScreen> {
             label: Text(context.tr('create_post')),
           ),
         ],
+      ),
       ),
     );
   }
