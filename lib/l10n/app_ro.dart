@@ -287,4 +287,22 @@ const Map<String, String> ro = {
   'create_story_hint': 'Împărtășește un moment care dispare în 24 de ore',
   'add_text_overlay': 'Adaugă text la story...',
 
+  // Stories V2
+  'add_location': 'Adaugă locație',
+  'location_hint': 'Introdu numele locației...',
+  'remove': 'Elimină',
+  'done': 'Gata',
+  'change': 'Schimbă',
+  'text': 'Text',
+  'location': 'Locație',
+  'type_text': 'Scrie textul tău...',
+  'your_story': 'Povestea ta',
+  'delete_story': 'Ștergi povestea?',
+  'reply_to_story': 'Răspunde la story...',
+  'type_reply': 'Scrie un răspuns...',
+  'replied_to_story': 'A răspuns la story-ul tău',
+  'reply_sent': 'Răspuns trimis!',
+  'reacted': 'Ai reacționat!',
+  'reaction_removed': 'Reacție eliminată',
+
 };

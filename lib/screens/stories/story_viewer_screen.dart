@@ -4,6 +4,9 @@ import 'package:video_player/video_player.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../models/story_model.dart';
 import '../../services/story_service.dart';
+import '../../services/friendship_service.dart';
+import '../../services/chat_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Full-screen story viewer — Instagram style
 class StoryViewerScreen extends StatefulWidget {
@@ -22,12 +25,13 @@ class StoryViewerScreen extends StatefulWidget {
 
 class _StoryViewerScreenState extends State<StoryViewerScreen> {
   final StoryService _storyService = StoryService();
+  final FriendshipService _friendshipService = FriendshipService();
+  final ChatService _chatService = ChatService();
 
   late PageController _pageController;
   late int _currentGroupIndex;
   int _currentStoryIndex = 0;
 
-  // Per-story animation
   Timer? _timer;
   double _progress = 0;
   static const _imageDuration = Duration(seconds: 5);
@@ -35,6 +39,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
 
   VideoPlayerController? _videoController;
   bool _isPaused = false;
+  bool? _isFriend; // null = loading
+
+  // Reply
+  final TextEditingController _replyController = TextEditingController();
+  bool _showReplyInput = false;
 
   @override
   void initState() {
@@ -42,6 +51,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _currentGroupIndex = widget.initialGroupIndex;
     _pageController = PageController(initialPage: _currentGroupIndex);
     _startStory();
+    _checkFriendship();
   }
 
   @override
@@ -49,11 +59,24 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _timer?.cancel();
     _videoController?.dispose();
     _pageController.dispose();
+    _replyController.dispose();
     super.dispose();
   }
 
   StoryGroup get _currentGroup => widget.storyGroups[_currentGroupIndex];
   StoryItem get _currentStory => _currentGroup.stories[_currentStoryIndex];
+
+  Future<void> _checkFriendship() async {
+    if (_currentGroup.isMyStory) {
+      setState(() => _isFriend = false);
+      return;
+    }
+    final areFriends = await _friendshipService.areFriends(
+      _friendshipService.currentUserId ?? '',
+      _currentGroup.userId,
+    );
+    if (mounted) setState(() => _isFriend = areFriends);
+  }
 
   void _startStory() {
     _timer?.cancel();
@@ -61,7 +84,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _videoController = null;
     _progress = 0;
 
-    // Mark as viewed
     _storyService.markAsViewed(_currentStory.id);
 
     if (_currentStory.isVideo) {
@@ -77,7 +99,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     int currentTick = 0;
 
     _timer = Timer.periodic(_tickInterval, (timer) {
-      if (_isPaused) return;
+      if (_isPaused || _showReplyInput) return;
       currentTick++;
       setState(() => _progress = currentTick / totalTicks);
       if (currentTick >= totalTicks) {
@@ -99,11 +121,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       final totalTicks =
           duration.inMilliseconds ~/ _tickInterval.inMilliseconds;
       int currentTick = 0;
-
       setState(() {});
 
       _timer = Timer.periodic(_tickInterval, (timer) {
-        if (_isPaused) return;
+        if (_isPaused || _showReplyInput) return;
         currentTick++;
         setState(() => _progress = currentTick / totalTicks.clamp(1, 999999));
         if (currentTick >= totalTicks) {
@@ -112,7 +133,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         }
       });
     } catch (e) {
-      // Fallback to image timer if video fails
       _startImageTimer();
     }
   }
@@ -140,12 +160,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       setState(() {
         _currentGroupIndex++;
         _currentStoryIndex = 0;
+        _isFriend = null;
       });
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
       _startStory();
+      _checkFriendship();
     } else {
       Navigator.pop(context);
     }
@@ -156,16 +178,19 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       setState(() {
         _currentGroupIndex--;
         _currentStoryIndex = 0;
+        _isFriend = null;
       });
       _pageController.previousPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
       _startStory();
+      _checkFriendship();
     }
   }
 
   void _onTapDown(TapDownDetails details) {
+    if (_showReplyInput) return;
     final screenWidth = MediaQuery.of(context).size.width;
     if (details.globalPosition.dx < screenWidth / 3) {
       _previousStory();
@@ -184,20 +209,89 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _videoController?.play();
   }
 
+  // ============ REACTIONS (non-friends + friends) ============
+
+  void _onReaction(String type) async {
+    // Quick haptic-like visual feedback
+    final result = await _storyService.toggleReaction(_currentStory.id, type);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result != null
+              ? '${StoryReactionType.emoji(type)} ${context.tr('reacted')}'
+              : context.tr('reaction_removed')),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  // ============ REPLY (friends only) ============
+
+  void _openReplyInput() {
+    setState(() {
+      _showReplyInput = true;
+      _isPaused = true;
+      _videoController?.pause();
+    });
+  }
+
+  void _closeReplyInput() {
+    setState(() {
+      _showReplyInput = false;
+      _isPaused = false;
+      _videoController?.play();
+    });
+    _replyController.clear();
+  }
+
+  Future<void> _sendReply() async {
+    final text = _replyController.text.trim();
+    if (text.isEmpty) return;
+
+    // Send as a message in conversation with story owner
+    try {
+      // Find or create conversation
+      final conversation = await _chatService.getOrCreateConversation(
+        _currentGroup.userId,
+      );
+
+      final replyText = '📖 ${context.tr('replied_to_story')}: $text';
+      await _chatService.sendMessage(conversation.id, replyText);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('reply_sent')),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending reply: $e');
+    }
+
+    _closeReplyInput();
+  }
+
+  // ============ DELETE (own stories) ============
+
   void _deleteCurrentStory() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete story?'),
+        title: Text(context.tr('delete_story')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(context.tr('cancel'))),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Delete'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -210,10 +304,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
 
     if (!mounted) return;
 
-    // Remove from local list
     _currentGroup.stories.removeAt(_currentStoryIndex);
     if (_currentGroup.stories.isEmpty) {
-      Navigator.pop(context, true); // Signal refresh
+      Navigator.pop(context, true);
     } else {
       _currentStoryIndex =
           _currentStoryIndex.clamp(0, _currentGroup.stories.length - 1);
@@ -221,10 +314,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
   }
 
+  // ============ BUILD ============
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: true,
       body: GestureDetector(
         onTapDown: _onTapDown,
         onLongPressStart: _onLongPressStart,
@@ -237,12 +333,45 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                // Media content
+                // Media
                 _buildMedia(),
 
-                // Text overlay
+                // Overlays (text + emoji)
+                ..._buildOverlays(),
+
+                // Location badge
+                if (_currentStory.hasLocation)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 80,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on,
+                                size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(_currentStory.locationName!,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Legacy text overlay
                 if (_currentStory.textOverlay != null &&
-                    _currentStory.textOverlay!.isNotEmpty)
+                    _currentStory.textOverlay!.isNotEmpty &&
+                    _currentStory.overlays.isEmpty)
                   Center(
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -264,11 +393,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                     ),
                   ),
 
-                // Top: progress bars + user info
+                // Top bar
                 _buildTopBar(),
 
-                // Bottom: view count (own stories) or time
-                _buildBottomInfo(),
+                // Bottom: reactions/reply OR view count
+                _buildBottomSection(),
+
+                // Reply input overlay
+                if (_showReplyInput) _buildReplyInput(),
               ],
             );
           },
@@ -278,7 +410,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   }
 
   Widget _buildMedia() {
-    if (_currentStory.isVideo && _videoController != null && _videoController!.value.isInitialized) {
+    if (_currentStory.isVideo &&
+        _videoController != null &&
+        _videoController!.value.isInitialized) {
       return Center(
         child: AspectRatio(
           aspectRatio: _videoController!.value.aspectRatio,
@@ -286,7 +420,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         ),
       );
     }
-
     return Image.network(
       _currentStory.mediaUrl,
       fit: BoxFit.contain,
@@ -295,13 +428,61 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       loadingBuilder: (_, child, progress) {
         if (progress == null) return child;
         return const Center(
-          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+          child:
+              CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         );
       },
       errorBuilder: (_, _, _) => const Center(
         child: Icon(Icons.broken_image, color: Colors.white38, size: 60),
       ),
     );
+  }
+
+  List<Widget> _buildOverlays() {
+    final size = MediaQuery.of(context).size;
+    return _currentStory.overlays.map((o) {
+      return Positioned(
+        left: o.x * size.width - (o.isEmoji ? 25 : 75),
+        top: o.y * size.height - 20,
+        child: Transform.rotate(
+          angle: o.rotation,
+          child: Transform.scale(
+            scale: o.scale,
+            child: o.isEmoji
+                ? Text(o.content, style: const TextStyle(fontSize: 40))
+                : Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: o.hasBg == true
+                          ? Colors.black.withValues(alpha: 0.5)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      o.content,
+                      style: TextStyle(
+                        color: o.color != null
+                            ? Color(int.parse(
+                                '0xFF${o.color!.replaceFirst('#', '')}'))
+                            : Colors.white,
+                        fontSize: o.fontSize ?? 24,
+                        fontWeight: FontWeight.w600,
+                        shadows: o.hasBg != true
+                            ? const [
+                                Shadow(
+                                    color: Colors.black54,
+                                    blurRadius: 4,
+                                    offset: Offset(1, 1)),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      );
+    }).toList();
   }
 
   Widget _buildTopBar() {
@@ -321,7 +502,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                 } else {
                   barProgress = 0.0;
                 }
-
                 return Expanded(
                   child: Container(
                     height: 2.5,
@@ -338,8 +518,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
               }),
             ),
           ),
-
-          // User info row
+          // User info
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -361,7 +540,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                     children: [
                       Text(
                         _currentGroup.isMyStory
-                            ? 'Your story'
+                            ? context.tr('your_story')
                             : _currentGroup.userName,
                         style: const TextStyle(
                           color: Colors.white,
@@ -379,15 +558,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                     ],
                   ),
                 ),
-
-                // Delete (own stories)
                 if (_currentGroup.isMyStory)
                   IconButton(
                     onPressed: _deleteCurrentStory,
                     icon: const Icon(Icons.delete_outline, color: Colors.white),
                   ),
-
-                // Close
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close, color: Colors.white),
@@ -400,25 +575,164 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     );
   }
 
-  Widget _buildBottomInfo() {
-    if (!_currentGroup.isMyStory) return const SizedBox.shrink();
+  Widget _buildBottomSection() {
+    // Own story → show view count
+    if (_currentGroup.isMyStory) {
+      return Positioned(
+        bottom: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.visibility_outlined,
+                    color: Colors.white70, size: 18),
+                const SizedBox(width: 6),
+                Text('${_currentStory.viewCount}',
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 14)),
+                if (_currentStory.reactionCount > 0) ...[
+                  const SizedBox(width: 16),
+                  const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
+                  const SizedBox(width: 4),
+                  Text('${_currentStory.reactionCount}',
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 14)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
+    // Others → reaction bar + reply (if friend)
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: SafeArea(
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.6),
+                Colors.transparent,
+              ],
+            ),
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.visibility_outlined,
-                  color: Colors.white70, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                '${_currentStory.viewCount}',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              // Reply button (friends only)
+              if (_isFriend == true)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _openReplyInput,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Text(
+                        context.tr('reply_to_story'),
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+              if (_isFriend == true) const SizedBox(width: 12),
+
+              // Reaction buttons
+              ...StoryReactionType.all.map((type) {
+                final isSelected = _currentStory.myReaction == type;
+                return GestureDetector(
+                  onTap: () => _onReaction(type),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      StoryReactionType.emoji(type),
+                      style: TextStyle(fontSize: isSelected ? 28 : 24),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReplyInput() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.8),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 8,
+          top: 8,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _replyController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: context.tr('type_reply'),
+                    hintStyle:
+                        TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: Colors.white),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _sendReply,
+                icon: const Icon(Icons.send, color: Colors.white),
+              ),
+              IconButton(
+                onPressed: _closeReplyInput,
+                icon: const Icon(Icons.close, color: Colors.white54),
               ),
             ],
           ),

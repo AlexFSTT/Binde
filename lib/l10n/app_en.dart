@@ -287,4 +287,22 @@ const Map<String, String> en = {
   'create_story_hint': 'Share a moment that disappears in 24 hours',
   'add_text_overlay': 'Add text to your story...',
 
+  // Stories V2
+  'add_location': 'Add Location',
+  'location_hint': 'Enter location name...',
+  'remove': 'Remove',
+  'done': 'Done',
+  'change': 'Change',
+  'text': 'Text',
+  'location': 'Location',
+  'type_text': 'Type your text...',
+  'your_story': 'Your story',
+  'delete_story': 'Delete story?',
+  'reply_to_story': 'Reply to story...',
+  'type_reply': 'Type a reply...',
+  'replied_to_story': 'Replied to your story',
+  'reply_sent': 'Reply sent!',
+  'reacted': 'Reacted!',
+  'reaction_removed': 'Reaction removed',
+
 };

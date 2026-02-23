@@ -9,17 +9,20 @@ class StoryService {
 
   String? get currentUserId => _supabase.auth.currentUser?.id;
 
-  /// Create a new story
+  /// Create a new story with overlays and location
   Future<StoryItem?> createStory({
     required File file,
     required String mediaType,
     String? textOverlay,
+    List<StoryOverlay> overlays = const [],
+    String? locationName,
+    double? locationLat,
+    double? locationLng,
   }) async {
     try {
       final userId = currentUserId;
       if (userId == null) return null;
 
-      // Upload media
       final ext = file.path.split('.').last.toLowerCase();
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
       final storagePath = '$userId/$fileName';
@@ -34,7 +37,6 @@ class StoryService {
       final mediaUrl =
           _supabase.storage.from('stories').getPublicUrl(storagePath);
 
-      // Insert story
       final response = await _supabase
           .from('stories')
           .insert({
@@ -42,6 +44,10 @@ class StoryService {
             'media_url': mediaUrl,
             'media_type': mediaType,
             'text_overlay': textOverlay,
+            'overlays': overlays.map((o) => o.toJson()).toList(),
+            'location_name': locationName,
+            'location_lat': locationLat,
+            'location_lng': locationLng,
           })
           .select()
           .single();
@@ -58,29 +64,29 @@ class StoryService {
     try {
       final userId = currentUserId;
 
-      // Fetch all non-expired stories with user info
       final response = await _supabase
           .from('stories')
           .select('''
             *,
-            user:profiles!stories_user_id_fkey(id, full_name, avatar_url)
+            user:profiles!stories_user_id_profiles_fkey(id, full_name, avatar_url)
           ''')
           .gt('expires_at', DateTime.now().toIso8601String())
           .order('created_at', ascending: true);
 
       if ((response as List).isEmpty) return [];
 
-      // Fetch which stories current user has viewed
+      // Fetch viewed story IDs
       Set<String> viewedIds = {};
       if (userId != null) {
         final views = await _supabase
             .from('story_views')
             .select('story_id')
             .eq('viewer_id', userId);
-        viewedIds = (views as List).map((v) => v['story_id'] as String).toSet();
+        viewedIds =
+            (views as List).map((v) => v['story_id'] as String).toSet();
       }
 
-      // Fetch view counts per story
+      // Fetch view counts
       final storyIds = (response).map((s) => s['id'] as String).toList();
       Map<String, int> viewCounts = {};
       if (storyIds.isNotEmpty) {
@@ -91,6 +97,23 @@ class StoryService {
         for (final v in (counts as List)) {
           final sid = v['story_id'] as String;
           viewCounts[sid] = (viewCounts[sid] ?? 0) + 1;
+        }
+      }
+
+      // Fetch reactions
+      Map<String, int> reactionCounts = {};
+      Map<String, String?> myReactions = {};
+      if (storyIds.isNotEmpty) {
+        final reactions = await _supabase
+            .from('story_reactions')
+            .select('story_id, user_id, reaction_type')
+            .inFilter('story_id', storyIds);
+        for (final r in (reactions as List)) {
+          final sid = r['story_id'] as String;
+          reactionCounts[sid] = (reactionCounts[sid] ?? 0) + 1;
+          if (r['user_id'] == userId) {
+            myReactions[sid] = r['reaction_type'] as String;
+          }
         }
       }
 
@@ -105,7 +128,6 @@ class StoryService {
         userInfo[uid] = row['user'] as Map<String, dynamic>;
       }
 
-      // Build StoryGroups
       final List<StoryGroup> groups = [];
       for (final entry in grouped.entries) {
         final uid = entry.key;
@@ -118,10 +140,16 @@ class StoryService {
             mediaUrl: item.mediaUrl,
             mediaType: item.mediaType,
             textOverlay: item.textOverlay,
+            overlays: item.overlays,
+            locationName: item.locationName,
+            locationLat: item.locationLat,
+            locationLng: item.locationLng,
             createdAt: item.createdAt,
             expiresAt: item.expiresAt,
             viewCount: viewCounts[item.id] ?? 0,
             viewedByMe: viewedIds.contains(item.id),
+            reactionCount: reactionCounts[item.id] ?? 0,
+            myReaction: myReactions[item.id],
           );
         }).toList();
 
@@ -158,13 +186,55 @@ class StoryService {
     try {
       final userId = currentUserId;
       if (userId == null) return;
-
       await _supabase.from('story_views').upsert({
         'story_id': storyId,
         'viewer_id': userId,
       });
     } catch (e) {
       debugPrint('Error marking story as viewed: $e');
+    }
+  }
+
+  /// Toggle reaction on a story
+  Future<String?> toggleReaction(String storyId, String reactionType) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return null;
+
+      final existing = await _supabase
+          .from('story_reactions')
+          .select()
+          .eq('story_id', storyId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        if (existing['reaction_type'] == reactionType) {
+          await _supabase
+              .from('story_reactions')
+              .delete()
+              .eq('story_id', storyId)
+              .eq('user_id', userId);
+          return null;
+        } else {
+          await _supabase
+              .from('story_reactions')
+              .update({'reaction_type': reactionType})
+              .eq('story_id', storyId)
+              .eq('user_id', userId);
+          return reactionType;
+        }
+      } else {
+        await _supabase.from('story_reactions').insert({
+          'story_id': storyId,
+          'user_id': userId,
+          'reaction_type': reactionType,
+        });
+        return reactionType;
+      }
+    } catch (e) {
+      debugPrint('Error toggling reaction: $e');
+      return null;
     }
   }
 
