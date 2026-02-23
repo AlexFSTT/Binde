@@ -305,4 +305,7 @@ const Map<String, String> ro = {
   'reacted': 'Ai reacționat!',
   'reaction_removed': 'Reacție eliminată',
 
+  // Story reply + viewers
+  'story_expired': 'Story expirat',
+
 };

@@ -253,6 +253,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     // Capture translations before async
     final repliedText = context.tr('replied_to_story');
     final sentText = context.tr('reply_sent');
+    final storyId = _currentStory.id;
 
     // Send as a message in conversation with story owner
     try {
@@ -261,7 +262,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       );
 
       final replyText = '📖 $repliedText: $text';
-      await _chatService.sendMessage(conversation.id, replyText);
+      await _chatService.sendMessage(
+        conversation.id,
+        replyText,
+        replyToStoryId: storyId,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -277,6 +282,28 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
 
     _closeReplyInput();
+  }
+
+  // ============ VIEWERS SHEET (own stories) ============
+
+  void _openViewersSheet() {
+    _isPaused = true;
+    _videoController?.pause();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _StoryViewersSheet(
+        storyId: _currentStory.id,
+        storyService: _storyService,
+      ),
+    ).then((_) {
+      if (mounted) {
+        _isPaused = false;
+        _videoController?.play();
+      }
+    });
   }
 
   // ============ DELETE (own stories) ============
@@ -435,7 +462,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
               CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         );
       },
-      errorBuilder: (_, _, _) => const Center(
+      errorBuilder: (_, __, ___) => const Center(
         child: Icon(Icons.broken_image, color: Colors.white38, size: 60),
       ),
     );
@@ -586,26 +613,32 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         left: 0,
         right: 0,
         child: SafeArea(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.visibility_outlined,
-                    color: Colors.white70, size: 18),
-                const SizedBox(width: 6),
-                Text('${_currentStory.viewCount}',
-                    style:
-                        const TextStyle(color: Colors.white70, fontSize: 14)),
-                if (_currentStory.reactionCount > 0) ...[
-                  const SizedBox(width: 16),
-                  const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
-                  const SizedBox(width: 4),
-                  Text('${_currentStory.reactionCount}',
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 14)),
+          child: GestureDetector(
+            onTap: _openViewersSheet,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.visibility_outlined,
+                      color: Colors.white70, size: 18),
+                  const SizedBox(width: 6),
+                  Text('${_currentStory.viewCount}',
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 14)),
+                  if (_currentStory.reactionCount > 0) ...[
+                    const SizedBox(width: 16),
+                    const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 4),
+                    Text('${_currentStory.reactionCount}',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14)),
+                  ],
+                  const SizedBox(width: 8),
+                  Icon(Icons.keyboard_arrow_up,
+                      color: Colors.white.withValues(alpha: 0.4), size: 18),
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -741,6 +774,222 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// =============================================================
+// VIEWERS & REACTIONS SHEET
+// =============================================================
+
+class _StoryViewersSheet extends StatefulWidget {
+  final String storyId;
+  final StoryService storyService;
+
+  const _StoryViewersSheet({
+    required this.storyId,
+    required this.storyService,
+  });
+
+  @override
+  State<_StoryViewersSheet> createState() => _StoryViewersSheetState();
+}
+
+class _StoryViewersSheetState extends State<_StoryViewersSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  StoryViewersData? _data;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    final data = await widget.storyService.getStoryViewers(widget.storyId);
+    if (mounted) {
+      setState(() {
+        _data = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.55,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            decoration: BoxDecoration(
+              color: cs.onSurface.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Tabs
+          TabBar(
+            controller: _tabController,
+            indicatorColor: cs.primary,
+            labelColor: cs.primary,
+            unselectedLabelColor: cs.onSurface.withValues(alpha: 0.5),
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.visibility_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text('${_data?.totalViewCount ?? 0}'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.favorite_outline, size: 18),
+                    const SizedBox(width: 6),
+                    Text('${_data?.reactions.length ?? 0}'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Content
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildViewersList(cs),
+                      _buildReactionsList(cs),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewersList(ColorScheme cs) {
+    if (_data == null) return const SizedBox.shrink();
+
+    final viewers = _data!.viewers;
+    final anonCount = _data!.anonymousViewCount;
+
+    if (viewers.isEmpty && anonCount == 0) {
+      return Center(
+        child: Text(
+          'No viewers yet',
+          style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        // Friend viewers (with name + avatar)
+        ...viewers.map((v) => ListTile(
+              leading: CircleAvatar(
+                backgroundImage:
+                    v.avatarUrl != null ? NetworkImage(v.avatarUrl!) : null,
+                child: v.avatarUrl == null
+                    ? Text(v.name[0].toUpperCase())
+                    : null,
+              ),
+              title: Text(v.name,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            )),
+
+        // Anonymous viewers
+        if (anonCount > 0)
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: cs.surfaceContainerHighest,
+              child: Icon(Icons.group,
+                  size: 20, color: cs.onSurface.withValues(alpha: 0.4)),
+            ),
+            title: Text(
+              '$anonCount other${anonCount > 1 ? 's' : ''} viewed',
+              style: TextStyle(
+                color: cs.onSurface.withValues(alpha: 0.5),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildReactionsList(ColorScheme cs) {
+    if (_data == null || _data!.reactions.isEmpty) {
+      return Center(
+        child: Text(
+          'No reactions yet',
+          style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: _data!.reactions.length,
+      itemBuilder: (_, i) {
+        final r = _data!.reactions[i];
+        return ListTile(
+          leading: r.isFriend
+              ? CircleAvatar(
+                  backgroundImage:
+                      r.avatarUrl != null ? NetworkImage(r.avatarUrl!) : null,
+                  child: r.avatarUrl == null
+                      ? Text(r.name[0].toUpperCase())
+                      : null,
+                )
+              : CircleAvatar(
+                  backgroundColor: cs.surfaceContainerHighest,
+                  child: Icon(Icons.person,
+                      size: 20, color: cs.onSurface.withValues(alpha: 0.4)),
+                ),
+          title: Text(
+            r.isFriend ? r.name : 'Someone',
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontStyle: r.isFriend ? FontStyle.normal : FontStyle.italic,
+              color: r.isFriend
+                  ? cs.onSurface
+                  : cs.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+          trailing: Text(
+            StoryReactionType.emoji(r.reactionType),
+            style: const TextStyle(fontSize: 22),
+          ),
+        );
+      },
     );
   }
 }

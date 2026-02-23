@@ -128,19 +128,22 @@ class ChatService {
           .from('messages')
           .select('''
             *,
-            sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)
+            sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url),
+            reply_story:stories!messages_reply_to_story_id_fkey(id, media_url, media_type)
           ''')
           .eq('conversation_id', conversationId)
           .order('created_at', ascending: true);
 
-      // Convertim răspunsul în lista de obiecte Message
       final messages = (response as List).map((json) {
         final message = Message.fromJson(json);
         final sender = json['sender'];
-        
+        final replyStory = json['reply_story'] as Map<String, dynamic>?;
+
         return message.copyWith(
           senderName: sender['full_name'] as String?,
           senderAvatar: sender['avatar_url'] as String?,
+          replyStoryMediaUrl: replyStory?['media_url'] as String?,
+          replyStoryMediaType: replyStory?['media_type'] as String?,
         );
       }).toList();
 
@@ -153,21 +156,24 @@ class ChatService {
 
   /// Trimite un mesaj nou într-o conversație
   /// Actualizează și conversația cu ultimul mesaj și timestamp
-  Future<Message> sendMessage(String conversationId, String content) async {
+  Future<Message> sendMessage(String conversationId, String content, {String? replyToStoryId}) async {
     try {
       final currentUserId = _supabase.auth.currentUser?.id;
       if (currentUserId == null) {
         throw Exception('User not authenticated');
       }
 
+      final insertData = {
+        'conversation_id': conversationId,
+        'sender_id': currentUserId,
+        'content': content,
+        if (replyToStoryId != null) 'reply_to_story_id': replyToStoryId,
+      };
+
       // 1. Inserăm mesajul nou în tabela messages
       final messageResponse = await _supabase
           .from('messages')
-          .insert({
-            'conversation_id': conversationId,
-            'sender_id': currentUserId,
-            'content': content,
-          })
+          .insert(insertData)
           .select('''
             *,
             sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)

@@ -230,9 +230,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     file_name,
                     file_size,
                     deleted_for_everyone,
+                    reply_to_story_id,
                     sender:profiles!messages_sender_id_fkey(
                       full_name,
                       avatar_url
+                    ),
+                    reply_story:stories!messages_reply_to_story_id_fkey(
+                      id, media_url, media_type
                     )
                   ''')
                   .eq('id', messageId)
@@ -240,13 +244,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
               final newMessage = Message.fromJson(response);
               
-              // ✅ FIX AVATAR "?": Extragem datele sender-ului din obiectul nested
-              // Message.fromJson() nu parsează automat sender-ul nested,
-              // trebuie extras manual și adăugat cu copyWith()
               final sender = response['sender'] as Map<String, dynamic>?;
+              final replyStory = response['reply_story'] as Map<String, dynamic>?;
               final messageWithSender = newMessage.copyWith(
                 senderName: sender?['full_name'] as String?,
                 senderAvatar: sender?['avatar_url'] as String?,
+                replyStoryMediaUrl: replyStory?['media_url'] as String?,
+                replyStoryMediaType: replyStory?['media_type'] as String?,
               );
               
               if (mounted) {
@@ -1196,6 +1200,39 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Story reply preview
+                        if (message.replyToStoryId != null && message.replyStoryMediaUrl != null)
+                          _buildStoryReplyPreview(message, colorScheme)
+                        else if (message.replyToStoryId != null && message.replyStoryMediaUrl == null)
+                          // Story expired/deleted — just show label
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: colorScheme.onSurface.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_stories,
+                                      size: 12,
+                                      color: colorScheme.onSurface.withValues(alpha: 0.3)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    context.tr('story_expired'),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontStyle: FontStyle.italic,
+                                      color: colorScheme.onSurface.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
                         // Media content
                         if (message.messageType == MessageType.image && message.attachmentUrl != null)
                           _buildImageBubble(message, colorScheme)
@@ -1300,6 +1337,92 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  /// Story reply preview — shows story thumbnail in chat bubble
+  Widget _buildStoryReplyPreview(Message message, ColorScheme colorScheme) {
+    final isVideo = message.replyStoryMediaType == 'video';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      decoration: BoxDecoration(
+        color: colorScheme.onSurface.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Story media thumbnail
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+            child: Stack(
+              children: [
+                Image.network(
+                  message.replyStoryMediaUrl!,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (_, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      height: 140,
+                      color: colorScheme.surfaceContainerHighest,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 140,
+                    color: colorScheme.surfaceContainerHighest,
+                    child: Center(
+                      child: Icon(Icons.image_not_supported,
+                          color: colorScheme.onSurface.withValues(alpha: 0.3)),
+                    ),
+                  ),
+                ),
+                if (isVideo)
+                  Positioned.fill(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.play_arrow,
+                            color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // "Replied to story" label
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              children: [
+                Icon(Icons.auto_stories,
+                    size: 12,
+                    color: colorScheme.primary.withValues(alpha: 0.6)),
+                const SizedBox(width: 4),
+                Text(
+                  context.tr('replied_to_story'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: colorScheme.primary.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildImageBubble(Message message, ColorScheme colorScheme) {
     return GestureDetector(
       onTap: () => _openMediaGallery(message),
@@ -1329,7 +1452,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
               );
             },
-            errorBuilder: (_, _, _) => SizedBox(
+            errorBuilder: (_, __, ___) => SizedBox(
               height: 100,
               width: 260,
               child: Center(
@@ -1558,11 +1681,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context,
       PageRouteBuilder(
         opaque: false,
-        pageBuilder: (_, _, _) => _MediaGalleryScreen(
+        pageBuilder: (_, __, ___) => _MediaGalleryScreen(
           mediaMessages: mediaMessages,
           initialIndex: startIndex >= 0 ? startIndex : 0,
         ),
-        transitionsBuilder: (_, animation, _, child) {
+        transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -2084,7 +2207,7 @@ class _GalleryImagePage extends StatelessWidget {
               ),
             );
           },
-          errorBuilder: (_, _, _) => Icon(
+          errorBuilder: (_, __, ___) => Icon(
             Icons.broken_image_outlined,
             size: 60,
             color: Colors.white.withValues(alpha: 0.3),

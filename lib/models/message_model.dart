@@ -75,6 +75,11 @@ class Message {
   final DateTime createdAt;
   final bool deletedForEveryone;
 
+  // Story reply reference
+  final String? replyToStoryId;
+  final String? replyStoryMediaUrl;
+  final String? replyStoryMediaType;
+
   // Reactions
   final Map<String, int> reactionCounts;
   final int totalReactions;
@@ -95,6 +100,9 @@ class Message {
     this.isRead = false,
     required this.createdAt,
     this.deletedForEveryone = false,
+    this.replyToStoryId,
+    this.replyStoryMediaUrl,
+    this.replyStoryMediaType,
     this.reactionCounts = const {},
     this.totalReactions = 0,
     this.myReaction,
@@ -115,6 +123,7 @@ class Message {
       isRead: json['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       deletedForEveryone: json['deleted_for_everyone'] as bool? ?? false,
+      replyToStoryId: json['reply_to_story_id'] as String?,
       senderName: json['sender_name'] as String?,
       senderAvatar: json['sender_avatar'] as String?,
     );
@@ -161,6 +170,9 @@ class Message {
     bool? isRead,
     DateTime? createdAt,
     bool? deletedForEveryone,
+    String? replyToStoryId,
+    String? replyStoryMediaUrl,
+    String? replyStoryMediaType,
     Map<String, int>? reactionCounts,
     int? totalReactions,
     String? myReaction,
@@ -180,6 +192,9 @@ class Message {
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
       deletedForEveryone: deletedForEveryone ?? this.deletedForEveryone,
+      replyToStoryId: replyToStoryId ?? this.replyToStoryId,
+      replyStoryMediaUrl: replyStoryMediaUrl ?? this.replyStoryMediaUrl,
+      replyStoryMediaType: replyStoryMediaType ?? this.replyStoryMediaType,
       reactionCounts: reactionCounts ?? this.reactionCounts,
       totalReactions: totalReactions ?? this.totalReactions,
       myReaction: clearMyReaction ? null : (myReaction ?? this.myReaction),

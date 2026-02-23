@@ -248,4 +248,105 @@ class StoryService {
       return false;
     }
   }
+
+  /// Get viewers + reactions for a story, with friend info
+  Future<StoryViewersData> getStoryViewers(String storyId) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return StoryViewersData.empty();
+
+      // Get all views with user info
+      final views = await _supabase
+          .from('story_views')
+          .select('''
+            viewer_id,
+            created_at,
+            viewer:profiles!story_views_viewer_id_profiles_fkey(id, full_name, avatar_url)
+          ''')
+          .eq('story_id', storyId)
+          .order('created_at', ascending: false);
+
+      // Get all reactions with user info
+      final reactions = await _supabase
+          .from('story_reactions')
+          .select('''
+            user_id,
+            reaction_type,
+            created_at,
+            reactor:profiles!story_reactions_user_id_profiles_fkey(id, full_name, avatar_url)
+          ''')
+          .eq('story_id', storyId)
+          .order('created_at', ascending: false);
+
+      // Get current user's friends
+      final friendships = await _supabase
+          .from('friendships')
+          .select('sender_id, receiver_id')
+          .eq('status', 'accepted')
+          .or('sender_id.eq.$userId,receiver_id.eq.$userId');
+
+      final friendIds = <String>{};
+      for (final f in friendships as List) {
+        final senderId = f['sender_id'] as String;
+        final receiverId = f['receiver_id'] as String;
+        friendIds.add(senderId == userId ? receiverId : senderId);
+      }
+
+      // Build viewer list
+      final List<StoryViewerInfo> viewers = [];
+      int anonymousCount = 0;
+
+      for (final v in views as List) {
+        final viewer = v['viewer'] as Map<String, dynamic>?;
+        final viewerId = v['viewer_id'] as String;
+        if (viewerId == userId) continue; // Skip self
+
+        if (friendIds.contains(viewerId) && viewer != null) {
+          viewers.add(StoryViewerInfo(
+            userId: viewerId,
+            name: viewer['full_name'] as String? ?? 'Unknown',
+            avatarUrl: viewer['avatar_url'] as String?,
+            isFriend: true,
+          ));
+        } else {
+          anonymousCount++;
+        }
+      }
+
+      // Build reaction list
+      final List<StoryReactionInfo> reactionList = [];
+      for (final r in reactions as List) {
+        final reactor = r['reactor'] as Map<String, dynamic>?;
+        final reactorId = r['user_id'] as String;
+
+        if (friendIds.contains(reactorId) && reactor != null) {
+          reactionList.add(StoryReactionInfo(
+            userId: reactorId,
+            name: reactor['full_name'] as String? ?? 'Unknown',
+            avatarUrl: reactor['avatar_url'] as String?,
+            reactionType: r['reaction_type'] as String,
+            isFriend: true,
+          ));
+        } else {
+          reactionList.add(StoryReactionInfo(
+            userId: reactorId,
+            name: 'Viewer',
+            avatarUrl: null,
+            reactionType: r['reaction_type'] as String,
+            isFriend: false,
+          ));
+        }
+      }
+
+      return StoryViewersData(
+        viewers: viewers,
+        reactions: reactionList,
+        anonymousViewCount: anonymousCount,
+        totalViewCount: (views as List).length,
+      );
+    } catch (e) {
+      debugPrint('Error getting story viewers: $e');
+      return StoryViewersData.empty();
+    }
+  }
 }

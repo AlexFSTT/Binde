@@ -305,4 +305,7 @@ const Map<String, String> en = {
   'reacted': 'Reacted!',
   'reaction_removed': 'Reaction removed',
 
+  // Story reply + viewers
+  'story_expired': 'Story expired',
+
 };

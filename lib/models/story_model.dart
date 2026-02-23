@@ -181,3 +181,57 @@ class StoryGroup {
   StoryItem get latestStory => stories.last;
   int get totalViews => stories.fold(0, (sum, s) => sum + s.viewCount);
 }
+
+/// Viewer info for story insights
+class StoryViewerInfo {
+  final String userId;
+  final String name;
+  final String? avatarUrl;
+  final bool isFriend;
+
+  StoryViewerInfo({
+    required this.userId,
+    required this.name,
+    this.avatarUrl,
+    this.isFriend = false,
+  });
+}
+
+/// Reaction info for story insights
+class StoryReactionInfo {
+  final String userId;
+  final String name;
+  final String? avatarUrl;
+  final String reactionType;
+  final bool isFriend;
+
+  StoryReactionInfo({
+    required this.userId,
+    required this.name,
+    this.avatarUrl,
+    required this.reactionType,
+    this.isFriend = false,
+  });
+}
+
+/// Aggregated viewers data
+class StoryViewersData {
+  final List<StoryViewerInfo> viewers;
+  final List<StoryReactionInfo> reactions;
+  final int anonymousViewCount;
+  final int totalViewCount;
+
+  StoryViewersData({
+    required this.viewers,
+    required this.reactions,
+    required this.anonymousViewCount,
+    required this.totalViewCount,
+  });
+
+  factory StoryViewersData.empty() => StoryViewersData(
+        viewers: [],
+        reactions: [],
+        anonymousViewCount: 0,
+        totalViewCount: 0,
+      );
+}
