@@ -7,9 +7,9 @@ import '../../services/chat_service.dart';
 import '../../widgets/common/notification_badge.dart';
 import '../../widgets/common/friends_bubble.dart';
 import '../../widgets/common/notifications_bubble.dart';
+import '../../widgets/common/add_friends_bubble.dart';
 import '../../providers/notification_provider.dart';
 import 'chat_detail_screen.dart';
-import '../friends/friend_search_screen.dart';
 
 /// Ecran pentru lista de conversații
 /// ✅ BADGE SEPARATION:
@@ -30,6 +30,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   List<Conversation> _conversations = [];
   Map<String, int> _unreadCounts = {};
   bool _isLoading = true;
+  bool _isBubbleOpen = false;
   String? _error;
   
   RealtimeChannel? _messagesChannel;
@@ -235,13 +236,18 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     ).then((_) => _loadConversations());
   }
 
-  void _openUserSelector() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const FriendSearchScreen(),
-      ),
-    ).then((_) => _loadConversations());
+  void _openUserSelector() async {
+    if (_isBubbleOpen) {
+      // Close by popping the overlay
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _isBubbleOpen = true);
+    final changed = await showAddFriendsBubble(context);
+    if (mounted) {
+      setState(() => _isBubbleOpen = false);
+      if (changed) _loadConversations();
+    }
   }
 
   /// Formatează timpul conversației
@@ -298,7 +304,21 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       floatingActionButton: FloatingActionButton(
         heroTag: 'conversations_fab',
         onPressed: _openUserSelector,
-        child: const Icon(Icons.edit),
+        child: AnimatedRotation(
+          turns: _isBubbleOpen ? 0.375 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutBack,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: animation,
+              child: child,
+            ),
+            child: _isBubbleOpen
+                ? const Icon(Icons.close_rounded, key: ValueKey('close'))
+                : const Icon(Icons.edit, key: ValueKey('edit')),
+          ),
+        ),
       ),
     );
   }
