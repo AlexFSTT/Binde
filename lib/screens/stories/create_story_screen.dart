@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/story_model.dart';
 import '../../services/story_service.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/location_picker_sheet.dart';
 
 class CreateStoryScreen extends StatefulWidget {
   const CreateStoryScreen({super.key});
@@ -26,6 +27,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   // Location
   String? _locationName;
+  double? _locationLat;
+  double? _locationLng;
 
   // Text editor
   bool _showTextEditor = false;
@@ -212,51 +215,54 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   // ============ LOCATION ============
 
-  void _showLocationDialog() {
-    final controller = TextEditingController(text: _locationName ?? '');
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.location_on, size: 20),
-            const SizedBox(width: 8),
-            Text(context.tr('add_location')),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: context.tr('location_hint'),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  void _showLocationDialog() async {
+    if (_locationName != null) {
+      // Already have location — show remove option
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.location_on, size: 20),
+              const SizedBox(width: 8),
+              Text(context.tr('add_location')),
+            ],
           ),
-        ),
-        actions: [
-          if (_locationName != null)
+          content: Text(_locationName!),
+          actions: [
             TextButton(
               onPressed: () {
-                setState(() => _locationName = null);
+                setState(() {
+                  _locationName = null;
+                  _locationLat = null;
+                  _locationLng = null;
+                });
                 Navigator.pop(ctx);
               },
               child: Text(context.tr('remove'),
                   style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(context.tr('cancel')),
-          ),
-          FilledButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              setState(() => _locationName = text.isEmpty ? null : text);
-              Navigator.pop(ctx);
-            },
-            child: Text(context.tr('save')),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(context.tr('cancel')),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final location = await LocationPickerSheet.show(
+      context,
+      title: context.tr('add_location'),
     );
+    if (location != null && mounted) {
+      setState(() {
+        _locationName = location.name;
+        _locationLat = location.latitude;
+        _locationLng = location.longitude;
+      });
+    }
   }
 
   // ============ PUBLISH ============
@@ -273,6 +279,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       mediaType: _mediaType,
       overlays: storyOverlays,
       locationName: _locationName,
+      locationLat: _locationLat,
+      locationLng: _locationLng,
     );
 
     if (mounted) {

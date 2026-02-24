@@ -13,6 +13,8 @@ import '../../models/conversation_model.dart';
 import '../../models/message_model.dart';
 import '../../services/chat_service.dart';
 import '../../services/presence_service.dart';
+import '../../widgets/location_picker_sheet.dart';
+import '../../widgets/location_bubble.dart';
 import '../../services/notification_service.dart';
 import '../../services/friendship_service.dart';
 import '../feed/user_posts_screen.dart';
@@ -461,6 +463,35 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         conversationId: widget.conversation.id,
         file: file,
         messageType: type,
+      );
+      widget.onMessageSent?.call();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.tr('error')}: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  Future<void> _pickAndSendLocation() async {
+    setState(() => _showAttachMenu = false);
+    final location = await LocationPickerSheet.show(context);
+    if (location == null || !mounted) return;
+
+    setState(() => _isSending = true);
+    try {
+      await _chatService.sendLocationMessage(
+        conversationId: widget.conversation.id,
+        locationName: location.name,
+        latitude: location.latitude,
+        longitude: location.longitude,
       );
       widget.onMessageSent?.call();
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -1239,11 +1270,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         else if (message.messageType == MessageType.video && message.attachmentUrl != null)
                           _buildVideoBubble(message, colorScheme)
                         else if (message.messageType == MessageType.file && message.attachmentUrl != null)
-                          _buildFileBubble(message, isMine, colorScheme),
+                          _buildFileBubble(message, isMine, colorScheme)
+                        else if (message.messageType == MessageType.location && message.latitude != null && message.longitude != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: LocationBubble(
+                              locationName: message.content.replaceFirst('📍 ', ''),
+                              latitude: message.latitude!,
+                              longitude: message.longitude!,
+                              isMine: isMine,
+                              colorScheme: colorScheme,
+                            ),
+                          ),
 
                         // Text content
                         if (message.messageType == MessageType.text ||
                             (message.content.isNotEmpty &&
+                             message.messageType != MessageType.location &&
                              !message.content.startsWith('📷') &&
                              !message.content.startsWith('🎥') &&
                              !message.content.startsWith('📎')))
@@ -1747,6 +1790,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   label: context.tr('file'),
                   color: Colors.blue[400]!,
                   onTap: _pickAndSendFile,
+                ),
+                _buildAttachOption(
+                  icon: Icons.location_on_outlined,
+                  label: 'Location',
+                  color: Colors.orange[600]!,
+                  onTap: _pickAndSendLocation,
                 ),
               ],
             ),

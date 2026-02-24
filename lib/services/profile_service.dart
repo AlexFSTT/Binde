@@ -46,9 +46,13 @@ class ProfileService {
     String? avatarUrl,
     String? coverUrl,
     String? birthCity,
+    double? birthCityLat,
+    double? birthCityLng,
     String? birthDate,
     String? gender,
     String? currentCity,
+    double? currentCityLat,
+    double? currentCityLng,
     String? jobTitle,
     String? jobCompany,
     String? relationshipStatus,
@@ -83,9 +87,13 @@ class ProfileService {
 
       // Câmpuri noi
       updates['birth_city'] = birthCity;
+      updates['birth_city_lat'] = birthCityLat;
+      updates['birth_city_lng'] = birthCityLng;
       updates['birth_date'] = birthDate;
       updates['gender'] = gender;
       updates['current_city'] = currentCity;
+      updates['current_city_lat'] = currentCityLat;
+      updates['current_city_lng'] = currentCityLng;
       updates['job_title'] = jobTitle;
       updates['job_company'] = jobCompany;
       updates['relationship_status'] = relationshipStatus;

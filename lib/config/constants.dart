@@ -12,6 +12,9 @@ class AppConstants {
   static const String supabaseUrl = 'https://uwxnknwnpocclqvpcstp.supabase.co';
   static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3eG5rbnducG9jY2xxdnBjc3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTAwMjQsImV4cCI6MjA4NDQyNjAyNH0.-yW2tMW_K4RD_YxG9NoaphnWaOqQ4CmabLu_UnNiFBs';
   
+  // Google Maps API Key (REPLACE with your real key!)
+  static const String googleMapsApiKey = 'AIzaSyAP0Fsux6wfIOCSpATYcTZAQk3qaqomyBM';
+  
   // Dimensiuni standard
   static const double paddingSmall = 8.0;
   static const double paddingMedium = 16.0;

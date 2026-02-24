@@ -3,13 +3,15 @@ enum MessageType {
   text,
   image,
   video,
-  file;
+  file,
+  location;
 
   static MessageType fromString(String? value) {
     switch (value) {
       case 'image': return MessageType.image;
       case 'video': return MessageType.video;
       case 'file': return MessageType.file;
+      case 'location': return MessageType.location;
       default: return MessageType.text;
     }
   }
@@ -20,6 +22,7 @@ enum MessageType {
       case MessageType.image: return 'image';
       case MessageType.video: return 'video';
       case MessageType.file: return 'file';
+      case MessageType.location: return 'location';
     }
   }
 
@@ -80,6 +83,10 @@ class Message {
   final String? replyStoryMediaUrl;
   final String? replyStoryMediaType;
 
+  // Location data
+  final double? latitude;
+  final double? longitude;
+
   // Reactions
   final Map<String, int> reactionCounts;
   final int totalReactions;
@@ -103,6 +110,8 @@ class Message {
     this.replyToStoryId,
     this.replyStoryMediaUrl,
     this.replyStoryMediaType,
+    this.latitude,
+    this.longitude,
     this.reactionCounts = const {},
     this.totalReactions = 0,
     this.myReaction,
@@ -124,6 +133,8 @@ class Message {
       createdAt: DateTime.parse(json['created_at'] as String),
       deletedForEveryone: json['deleted_for_everyone'] as bool? ?? false,
       replyToStoryId: json['reply_to_story_id'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       senderName: json['sender_name'] as String?,
       senderAvatar: json['sender_avatar'] as String?,
     );
@@ -173,6 +184,8 @@ class Message {
     String? replyToStoryId,
     String? replyStoryMediaUrl,
     String? replyStoryMediaType,
+    double? latitude,
+    double? longitude,
     Map<String, int>? reactionCounts,
     int? totalReactions,
     String? myReaction,
@@ -195,6 +208,8 @@ class Message {
       replyToStoryId: replyToStoryId ?? this.replyToStoryId,
       replyStoryMediaUrl: replyStoryMediaUrl ?? this.replyStoryMediaUrl,
       replyStoryMediaType: replyStoryMediaType ?? this.replyStoryMediaType,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       reactionCounts: reactionCounts ?? this.reactionCounts,
       totalReactions: totalReactions ?? this.totalReactions,
       myReaction: clearMyReaction ? null : (myReaction ?? this.myReaction),

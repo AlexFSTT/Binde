@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/profile_service.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/location_picker_sheet.dart';
 import '../../main.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -24,6 +25,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // Controlere noi
   final _birthCityController = TextEditingController();
   final _currentCityController = TextEditingController();
+  double? _birthCityLat;
+  double? _birthCityLng;
+  double? _currentCityLat;
+  double? _currentCityLng;
   final _jobTitleController = TextEditingController();
   final _jobCompanyController = TextEditingController();
   final _relationshipPartnerController = TextEditingController();
@@ -89,6 +94,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _coverUrl = profile['cover_url'];
       _birthCityController.text = profile['birth_city'] ?? '';
       _currentCityController.text = profile['current_city'] ?? '';
+      _birthCityLat = (profile['birth_city_lat'] as num?)?.toDouble();
+      _birthCityLng = (profile['birth_city_lng'] as num?)?.toDouble();
+      _currentCityLat = (profile['current_city_lat'] as num?)?.toDouble();
+      _currentCityLng = (profile['current_city_lng'] as num?)?.toDouble();
       _jobTitleController.text = profile['job_title'] ?? '';
       _jobCompanyController.text = profile['job_company'] ?? '';
       _relationshipPartnerController.text = profile['relationship_partner'] ?? '';
@@ -249,9 +258,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       fullName: _nameController.text.trim(),
       bio: _bioController.text.trim(),
       birthCity: _birthCityController.text.trim().isEmpty ? null : _birthCityController.text.trim(),
+      birthCityLat: _birthCityLat,
+      birthCityLng: _birthCityLng,
       birthDate: _birthDate?.toIso8601String().split('T').first,
       gender: _gender,
       currentCity: _currentCityController.text.trim().isEmpty ? null : _currentCityController.text.trim(),
+      currentCityLat: _currentCityLat,
+      currentCityLng: _currentCityLng,
       jobTitle: _jobTitleController.text.trim().isEmpty ? null : _jobTitleController.text.trim(),
       jobCompany: _jobCompanyController.text.trim().isEmpty ? null : _jobCompanyController.text.trim(),
       relationshipStatus: _relationshipStatus,
@@ -346,9 +359,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           // ====== LOCATION ======
                           _sectionTitle(context.tr('section_location'), cs),
                           const SizedBox(height: 12),
-                          _buildField(_currentCityController, context.tr('current_city'), Icons.location_on_outlined),
+                          _buildLocationField(
+                            controller: _currentCityController,
+                            label: context.tr('current_city'),
+                            icon: Icons.location_on_outlined,
+                            onPick: () => _pickCity(isBirth: false),
+                            onClear: () => setState(() {
+                              _currentCityController.clear();
+                              _currentCityLat = null;
+                              _currentCityLng = null;
+                            }),
+                          ),
                           const SizedBox(height: 14),
-                          _buildField(_birthCityController, context.tr('hometown'), Icons.home_outlined),
+                          _buildLocationField(
+                            controller: _birthCityController,
+                            label: context.tr('hometown'),
+                            icon: Icons.home_outlined,
+                            onPick: () => _pickCity(isBirth: true),
+                            onClear: () => setState(() {
+                              _birthCityController.clear();
+                              _birthCityLat = null;
+                              _birthCityLng = null;
+                            }),
+                          ),
 
                           const SizedBox(height: 28),
 
@@ -558,6 +591,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         isDense: true,
       ),
     );
+  }
+
+  Widget _buildLocationField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required VoidCallback onPick,
+    required VoidCallback onClear,
+  }) {
+    return GestureDetector(
+      onTap: onPick,
+      child: AbsorbPointer(
+        child: TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: Icon(icon),
+            suffixIcon: controller.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: onClear,
+                  )
+                : const Icon(Icons.search, size: 18),
+            isDense: true,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickCity({required bool isBirth}) async {
+    final location = await LocationPickerSheet.show(
+      context,
+      citiesOnly: true,
+      title: isBirth ? context.tr('hometown') : context.tr('current_city'),
+    );
+    if (location != null && mounted) {
+      setState(() {
+        if (isBirth) {
+          _birthCityController.text = location.name;
+          _birthCityLat = location.latitude;
+          _birthCityLng = location.longitude;
+        } else {
+          _currentCityController.text = location.name;
+          _currentCityLat = location.latitude;
+          _currentCityLng = location.longitude;
+        }
+      });
+    }
   }
 
   Widget _buildUsernameField() {

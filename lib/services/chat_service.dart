@@ -203,6 +203,54 @@ class ChatService {
     }
   }
 
+  /// Send a location message with coordinates
+  Future<Message> sendLocationMessage({
+    required String conversationId,
+    required String locationName,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) throw Exception('User not authenticated');
+
+      final messageResponse = await _supabase
+          .from('messages')
+          .insert({
+            'conversation_id': conversationId,
+            'sender_id': currentUserId,
+            'content': '📍 $locationName',
+            'message_type': 'location',
+            'latitude': latitude,
+            'longitude': longitude,
+          })
+          .select('''
+            *,
+            sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)
+          ''')
+          .single();
+
+      await _supabase
+          .from('conversations')
+          .update({
+            'last_message': '📍 Location',
+            'last_message_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', conversationId);
+
+      final message = Message.fromJson(messageResponse);
+      final sender = messageResponse['sender'];
+      
+      return message.copyWith(
+        senderName: sender['full_name'] as String?,
+        senderAvatar: sender['avatar_url'] as String?,
+      );
+    } catch (e) {
+      debugPrint('Error sending location: $e');
+      rethrow;
+    }
+  }
+
   /// Trimite un mesaj cu atașament (imagine, video, fișier)
   Future<Message> sendMediaMessage({
     required String conversationId,
