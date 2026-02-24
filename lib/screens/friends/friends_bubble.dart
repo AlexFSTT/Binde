@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/friendship_model.dart';
 import '../../services/friendship_service.dart';
 import '../../services/chat_service.dart';
-import '../../screens/chat/chat_detail_screen.dart';
+import '../chat/chat_detail_screen.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Shows the friends bubble overlay with animation
