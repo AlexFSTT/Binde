@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
-import '../../widgets/common/hamburger_menu.dart';
+import '../../widgets/common/menu_bubble.dart';
 import '../../widgets/common/notification_badge.dart';
 import '../../providers/notification_provider.dart';
 import '../feed/feed_screen.dart';
@@ -37,8 +37,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onNavigationTap(int index) {
     if (index == 3) {
-      // Hamburger menu
-      _scaffoldKey.currentState?.openDrawer();
+      // Menu bubble
+      showMenuBubble(context);
     } else {
       setState(() {
         _currentIndex = index;
@@ -52,7 +52,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: const HamburgerMenu(),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,

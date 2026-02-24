@@ -6,8 +6,8 @@ import '../../models/conversation_model.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/common/notification_badge.dart';
 import '../../widgets/common/friends_bubble.dart';
+import '../../widgets/common/notifications_bubble.dart';
 import '../../providers/notification_provider.dart';
-import '../notifications/notifications_screen.dart';
 import 'chat_detail_screen.dart';
 import '../friends/friend_search_screen.dart';
 
@@ -279,20 +279,13 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         ),
         title: Text(context.tr('nav_chat')),
         actions: [
-          // ✅ CLOPOTEL = doar friend requests cu COUNTER
+          // ✅ CLOPOTEL = bubble cu notificări
           IconButton(
             icon: NotificationBadge(
               count: chatNotificationCount,
               child: const Icon(Icons.notifications_outlined),
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(category: 'chat'),
-                ),
-              );
-            },
+            onPressed: () => showNotificationsBubble(context),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

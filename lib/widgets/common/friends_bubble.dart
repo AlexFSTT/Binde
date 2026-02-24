@@ -497,7 +497,7 @@ class _FriendsBubbleOverlayState extends State<FriendsBubbleOverlay>
             curve: Curves.elasticOut,
             builder: (context, value, child) => Transform.scale(
               scale: value,
-              child: Opacity(opacity: value, child: child),
+              child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
             ),
             child: Icon(Icons.people_outline_rounded,
                 size: 56,
