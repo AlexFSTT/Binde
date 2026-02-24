@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/conversation_model.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/common/notification_badge.dart';
-import '../../widgets/common/friends_drawer.dart';
+import '../../widgets/common/friends_bubble.dart';
 import '../../providers/notification_provider.dart';
 import '../notifications/notifications_screen.dart';
 import 'chat_detail_screen.dart';
@@ -271,13 +271,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: FriendsDrawer(
-        onChatOpened: _loadConversations,
-      ),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.people_outline),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          onPressed: () => showFriendsBubble(context, onChatOpened: _loadConversations),
           tooltip: context.tr('friends'),
         ),
         title: Text(context.tr('nav_chat')),
