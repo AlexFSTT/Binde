@@ -7,7 +7,7 @@ import '../../services/chat_service.dart';
 import '../../widgets/common/notification_badge.dart';
 import '../friends/friends_bubble.dart';
 import '../notifications/notifications_bubble.dart';
-import '../../widgets/common/add_friends_bubble.dart';
+import '../friends/add_friends_bubble.dart';
 import '../../providers/notification_provider.dart';
 import 'chat_detail_screen.dart';
 
