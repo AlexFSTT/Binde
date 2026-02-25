@@ -23,7 +23,7 @@ import 'dart:async';
 /// Ecran pentru chat 1-la-1 între utilizatorul curent și un alt utilizator
 /// Cu status Online/Last seen/Typing și profil clickable
 /// ✅ FIX: Avatar-ul sender-ului se afișează corect la mesaje noi realtime
-class ChatDetailScreen extends StatefulWidget {
+  class ChatDetailScreen extends StatefulWidget {
   final Conversation conversation;
   final VoidCallback? onMessageSent;
 
